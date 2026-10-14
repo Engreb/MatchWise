@@ -434,3 +434,19 @@ a.setting-row { color: inherit; }
 .sidebar .searchbtn svg { width: 17px; height: 17px; }
 @media (min-width: 900px) { .crow { grid-template-columns: 52px minmax(0,1fr) 150px; } .tt .tm { max-width: none; } }
 .dist div { min-width: 0; } .dist em { font-size: 9px; white-space: nowrap; }
+/* My teams & leagues */
+.myteam { display: flex; align-items: center; gap: 10px; padding: 12px 12px 12px 14px; margin-bottom: 8px; }
+.mt-main { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: center; color: inherit; }
+.mt-main .crest { width: 42px; height: 42px; font-size: 11px; }
+.mt-next { font-size: 12.5px; color: var(--text-2); margin-top: 3px; }
+.mt-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tile { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); text-align: left; font-size: 13.5px; font-weight: 500; color: var(--text-2); min-width: 0; min-height: 46px; transition: background-color .15s, border-color .15s; }
+.tile:hover { border-color: var(--border-strong); }
+.tile .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .crest { width: 26px; height: 26px; font-size: 7.5px; }
+.tile .st { width: 16px; height: 16px; color: #F5B000; flex-shrink: 0; }
+.tile .st svg { width: 16px; height: 16px; display: block; }
+.tile[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.starbtn svg, .iconbtn svg { pointer-events: none; }
+.search { display: block; } .search svg { top: 50% !important; transform: translateY(-50%); }

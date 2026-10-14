@@ -1,7 +1,7 @@
 /* Offline support: the app shell is cached; prediction data is fetched fresh when online
    and falls back to the last saved copy when offline. */
-const VERSION = 'mw-v12';
-const SHELL = ['./', 'index.html', 'app.css?v=12', 'app.js?v=12', 'teams-meta.js?v=12', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png'];
+const VERSION = 'mw-v13';
+const SHELL = ['./', 'index.html', 'app.css?v=13', 'app.js?v=13', 'teams-meta.js?v=13', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

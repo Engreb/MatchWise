@@ -28,6 +28,7 @@ function toggleFavLeague(lg) {
   saveFavs();
 }
 state.fxView = store.get('mw-fxview') === 'cards' ? 'cards' : 'compact';
+state.fxMine = store.get('mw-fxmine') === '1';
 
 /* ---------- theme ---------- */
 const prefersDark = () => !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -191,7 +192,8 @@ const starBtn = (lg, t) => `<button class="starbtn" data-fav-team="${esc(lg)}|${
 async function route() {
   const parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   const page = parts[0] || 'weekend';
-  const sub = { match: state.from, team: 'tables' }[page] || page;
+  const sub = { match: state.from, team: 'tables', sync: 'settings' }[page] || page;
+  if (page !== 'settings') state.syncNote = '';
   const mobileActive = ['predict', 'accuracy', 'settings'].includes(sub) ? 'more' : sub;
   document.getElementById('nav').innerHTML = NAV_DESKTOP.map(([k, l]) => `<a href="#/${k}" ${k === sub ? 'aria-current="page"' : ''}>${I[k]}<span>${l}</span></a>`).join('');
   document.getElementById('tabbar').innerHTML = NAV_MOBILE.map(([k, l]) => `<a href="#/${k}" ${k === mobileActive ? 'aria-current="page"' : ''}><span class="ic">${I[k]}</span><span>${l}</span></a>`).join('');
@@ -208,8 +210,9 @@ async function route() {
       fixtures: () => fixturesPage(meta), tables: () => tablesPage(meta, parts[1]),
       predict: () => predictPage(meta), history: () => historyPage(meta), accuracy: () => accuracyPage(meta),
       more: () => morePage(meta), settings: () => settingsPage(meta), weekend: () => weekendPage(meta),
+      sync: () => syncPage(meta, parts[1]),
     };
-    const titles = { fixtures: 'Fixtures', tables: 'Tables', predict: 'Predict a match', history: 'This season', accuracy: 'Model accuracy', more: 'More', settings: 'My teams & leagues', weekend: 'This weekend' };
+    const titles = { sync: 'Add teams from a link', fixtures: 'Fixtures', tables: 'Tables', predict: 'Predict a match', history: 'This season', accuracy: 'Model accuracy', more: 'More', settings: 'My teams & leagues', weekend: 'This weekend' };
     if (['fixtures', 'predict', 'weekend'].includes(page)) state.from = page;
     const html = await (pages[page] || pages.weekend)();
     main.innerHTML = `<div class="page">${html}</div>`;
@@ -325,13 +328,18 @@ async function weekendPage(meta) {
 
 /* ---------- fixtures ---------- */
 async function fixturesPage(meta) {
-  const fx = upcoming(meta);
+  const hasFavs = favs.teams.length || favs.leagues.length;
+  const mineOnly = hasFavs && state.fxMine;
+  const isMine = f => isFavLeague(f.league) || isFavTeam(f.league, f.home) || isFavTeam(f.league, f.away);
+  const fx = upcoming(meta).filter(f => !mineOnly || isMine(f));
   const days = [...new Set(fx.map(f => ukDate(f.kickoff)))].sort();
   if (!state.fxDay || !days.includes(state.fxDay)) state.fxDay = days[0] || null;
   const head = `${topbar()}<div class="page-head"><div><h1>Fixtures</h1><p class="sub">Next 10 days · UK time</p></div>
     <div class="seg" role="group" aria-label="Layout"><button data-fxview="cards" aria-pressed="${state.fxView === 'cards'}">Cards</button><button data-fxview="compact" aria-pressed="${state.fxView === 'compact'}">Compact</button></div></div>`;
+  if (!fx.length && mineOnly) return `<div class="content">${head}<button class="lchip" data-fxmine aria-pressed="true" style="margin:10px 0 12px;padding-left:10px">${I.star} My matches</button><div class="card empty"><h3>No matches for your teams or leagues</h3><p>None of them play in the next 10 days.</p></div></div>`;
   if (!fx.length) return `<div class="content">${head}${staleNotice(meta)}<div class="card empty"><h3>No upcoming fixtures found</h3><p>The schedule couldn't be loaded, or every match has already kicked off.</p><a class="btn primary" href="#/predict">Predict a match</a></div></div>`;
-  const strip = `<div class="days hscroll" role="group" aria-label="Choose a day">${days.map(d => {
+  const mineBtn = hasFavs ? `<button class="lchip" data-fxmine aria-pressed="${!!mineOnly}" style="margin:10px 0 0;padding-left:10px">${I.star} My matches${mineOnly ? '' : ` · ${upcoming(meta).filter(isMine).length}`}</button>` : '';
+  const strip = `${mineBtn}<div class="days hscroll" role="group" aria-label="Choose a day">${days.map(d => {
     const x = new Date(d + 'T12:00:00Z');
     return `<button class="day-pill" data-day="${d}" aria-pressed="${d === state.fxDay}" style="min-width:54px"><small>${x.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}</small><b>${x.getUTCDate()}</b><i></i></button>`;
   }).join('')}</div>`;
@@ -776,22 +784,81 @@ async function morePage(meta) {
 }
 
 /* ---------- my teams & leagues ---------- */
+function myTeamCard(meta, f, i) {
+  const r = TABLES[f.league]?.rows.find(x => x.team === f.name);
+  const nx = upcoming(meta).find(x => x.league === f.league && (x.home === f.name || x.away === f.name) && x.pr);
+  let next = '<span class="muted">No fixture in the next 10 days</span>';
+  if (nx) {
+    const home = nx.home === f.name, win = home ? nx.pr.H : nx.pr.A;
+    next = `Next: ${home ? 'v' : '@'} ${esc(home ? nx.away : nx.home)} · ${fmtShort(nx.kickoff)} ${fmtTime(nx.kickoff)} · <b class="num">${pct(win)}</b> to win`;
+  }
+  return `<div class="card myteam">
+    <a class="mt-main" href="${teamHref(f.league, f.name)}">${crest(f.name)}<span style="min-width:0">
+      <b>${esc(f.name)}</b><div class="small muted">${cc(f.league)} ${esc(LEAGUE_NAMES[f.league])}${r ? ` · ${ord(r.pos)} · ${r.pts} pts` : ''}</div>
+      <div class="mt-next">${next}</div></span></a>
+    <div class="mt-actions">${i > 0 ? `<button class="iconbtn" data-fav-move="${i}" aria-label="Move ${esc(f.name)} up">${svg('<path d="M12 19V5M5 12l7-7 7 7"/>')}</button>` : ''}${starBtn(f.league, f.name)}</div></div>`;
+}
+const tile = (lg, t, showLeague) => `<button class="tile" data-fav-team="${esc(lg)}|${esc(t)}" aria-pressed="${isFavTeam(lg, t)}" aria-label="${isFavTeam(lg, t) ? 'Remove' : 'Add'} ${esc(t)}">${crest(t)}<span class="n">${esc(t)}${showLeague ? `<small class="muted" style="display:block;font-weight:400">${esc(LEAGUE_NAMES[lg])}</small>` : ''}</span>${isFavTeam(lg, t) ? `<span class="st">${I.starFill}</span>` : ''}</button>`;
+function encodeFavs() {
+  const json = JSON.stringify({ t: favs.teams.map(f => [f.league, f.name]), l: favs.leagues });
+  return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function decodeFavs(code) {
+  try {
+    const json = decodeURIComponent(escape(atob(code.replace(/-/g, '+').replace(/_/g, '/'))));
+    const o = JSON.parse(json);
+    return {
+      teams: (o.t || []).filter(x => Array.isArray(x) && TABLES[x[0]]?.rows.some(r => r.team === x[1])).map(([league, name]) => ({ league, name })),
+      leagues: (o.l || []).filter(k => TABLES[k]),
+    };
+  } catch { return null; }
+}
+const syncLink = () => `${location.origin}${location.pathname}#/sync/${encodeFavs()}`;
 async function settingsPage(meta) {
   const q = state.setQ.trim().toLowerCase();
-  const leagues = meta.leagues.map(l => `<div class="setting-row">${cc(l.key)}<span class="grow">${esc(l.name)}</span>
-    <button class="starbtn" data-fav-league="${l.key}" aria-pressed="${isFavLeague(l.key)}" aria-label="${isFavLeague(l.key) ? 'Remove' : 'Add'} ${esc(l.name)}">${isFavLeague(l.key) ? I.starFill : I.starOutline}</button></div>`).join('');
-  const groups = leagueOrder(meta).map(k => {
-    const teams = TABLES[k].rows.map(r => r.team).sort((a, b) => a.localeCompare(b)).filter(t => !q || t.toLowerCase().includes(q));
-    if (!teams.length) return '';
-    return `<div class="eyebrow"><span>${cc(k)} ${esc(LEAGUE_NAMES[k])}</span></div><div class="card" style="overflow:hidden">${teams.map(t => `<div class="setting-row">${crest(t, 'sm')}<a class="grow" href="${teamHref(k, t)}" style="color:inherit">${esc(t)}</a>${starBtn(k, t)}</div>`).join('')}</div>`;
-  }).join('');
+  const order = leagueOrder(meta);
+  if (!state.setLeague || !TABLES[state.setLeague]) state.setLeague = favs.leagues[0] || order[0];
   const mine = favs.teams.filter(f => TABLES[f.league]);
-  return `<div class="content narrow">${topbar()}<div class="page-head"><div><h1>My teams & leagues</h1><p class="sub">Starred teams and leagues appear first across the app. Saved on this device.</p></div></div>
-    ${mine.length ? `<div class="eyebrow"><span>Starred teams</span></div><div class="hscroll">${mine.map(f => `<a class="lchip" aria-pressed="true" href="${teamHref(f.league, f.name)}">${crest(f.name, 'sm')}${esc(f.name)}</a>`).join('')}</div>` : ''}
-    <div class="eyebrow"><span>Leagues</span></div><div class="card" style="overflow:hidden">${leagues}</div>
-    <div class="eyebrow"><span>Teams</span></div>
-    <label class="search" style="margin:0 0 4px;width:100%">${I.search}<input type="search" placeholder="Filter teams" aria-label="Filter teams" value="${esc(state.setQ)}" data-setq style="width:100%"></label>
-    <div id="setteams">${groups || '<div class="card empty"><h3>No teams match</h3></div>'}</div>
+  let picker;
+  if (q) {
+    const hits = Object.entries(TABLES).flatMap(([k, t]) => t.rows.map(r => [k, r.team])).filter(([, t]) => t.toLowerCase().includes(q)).sort((a, b) => a[1].localeCompare(b[1]));
+    picker = hits.length ? `<div class="tiles">${hits.slice(0, 40).map(([k, t]) => tile(k, t, true)).join('')}</div>` : '<div class="card empty"><h3>No teams match</h3></div>';
+  } else {
+    const teams = TABLES[state.setLeague].rows.map(r => r.team).sort((a, b) => a.localeCompare(b));
+    picker = `<div class="hscroll" role="group" aria-label="Choose a league" style="margin-bottom:10px">${order.map(k => `<button class="lchip" data-setlg="${k}" aria-pressed="${k === state.setLeague}">${cc(k)}${esc(LEAGUE_NAMES[k])}</button>`).join('')}</div>
+      <div class="tiles">${teams.map(t => tile(state.setLeague, t)).join('')}</div>`;
+  }
+  const n = mine.length + favs.leagues.length, note = state.syncNote;
+  state.syncNote = ''; // show the confirmation once
+  return `<div class="content narrow">${topbar()}
+    <div class="page-head"><div><h1>My teams & leagues</h1><p class="sub">Starred teams and leagues come first across the app: the weekend spotlight, fixtures, tables and search.</p></div></div>
+    ${note ? `<div class="notice" role="status" style="background:var(--win-soft);border-color:transparent;color:var(--win)">${esc(note)}</div>` : ''}
+    <div class="eyebrow"><span>Your teams${mine.length ? ` · ${mine.length}` : ''}</span></div>
+    ${mine.length ? mine.map((f, i) => myTeamCard(meta, f, i)).join('') : '<div class="card card-pad"><p class="small muted" style="margin:0">No teams yet. Tap any team below to star it.</p></div>'}
+    <div class="eyebrow"><span>Add teams</span></div>
+    <label class="search" style="margin:0 0 10px;width:100%">${I.search}<input type="search" placeholder="Search all teams" aria-label="Search all teams" value="${esc(state.setQ)}" data-setq style="width:100%"></label>
+    ${picker}
+    <div class="eyebrow"><span>Your leagues</span></div>
+    <div class="tiles">${meta.leagues.map(l => `<button class="tile" data-fav-league="${l.key}" aria-pressed="${isFavLeague(l.key)}" aria-label="${isFavLeague(l.key) ? 'Remove' : 'Add'} ${esc(l.name)}">${cc(l.key)}<span class="n">${esc(l.name)}</span>${isFavLeague(l.key) ? `<span class="st">${I.starFill}</span>` : ''}</button>`).join('')}</div>
+    <div class="eyebrow"><span>Use on another device</span></div>
+    <div class="card card-pad">
+      <p class="small" style="margin:0 0 10px;color:var(--text-2)">Your stars are saved on this device only. Open this link on your phone or computer to copy them there. It contains only team and league names.</p>
+      ${n ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-sync-share>${navigator.share ? 'Share link' : 'Copy link'}</button>${navigator.share ? '<button class="btn" data-sync-copy>Copy link</button>' : ''}</div>
+        <p class="small muted" data-sync-status style="margin:8px 0 0" role="status"></p>` : '<p class="small muted" style="margin:0">Star a team or league first.</p>'}
+    </div>
+  </div>`;
+}
+async function syncPage(meta, code) {
+  const got = decodeFavs(code || '');
+  const back = `<a class="back" href="#/settings">${I.back}My teams & leagues</a>`;
+  if (!got || (!got.teams.length && !got.leagues.length)) return `<div class="content narrow">${back}<div class="card empty"><h3>This link doesn't contain any teams</h3><p>It may have been cut short when it was copied.</p></div></div>`;
+  return `<div class="content narrow">${back}<div class="page-head"><div><h1>Add these to this device?</h1><p class="sub">From a Matchwise sync link.</p></div></div>
+    ${got.teams.length ? `<div class="eyebrow"><span>Teams · ${got.teams.length}</span></div><div class="hscroll" style="flex-wrap:wrap">${got.teams.map(f => `<span class="lchip">${crest(f.name, 'sm')}${esc(f.name)}</span>`).join('')}</div>` : ''}
+    ${got.leagues.length ? `<div class="eyebrow"><span>Leagues · ${got.leagues.length}</span></div><div class="hscroll" style="flex-wrap:wrap">${got.leagues.map(k => `<span class="lchip">${cc(k)}${esc(LEAGUE_NAMES[k])}</span>`).join('')}</div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px">
+      <button class="btn primary" data-sync-apply="merge" data-code="${esc(code)}">Add to mine</button>
+      ${favs.teams.length || favs.leagues.length ? `<button class="btn" data-sync-apply="replace" data-code="${esc(code)}">Replace mine</button>` : ''}
+      <a class="btn" href="#/settings">Cancel</a></div>
   </div>`;
 }
 
@@ -874,6 +941,37 @@ function bind() {
     const y = scrollY; route().then(() => scrollTo(0, y));
   });
   document.querySelectorAll('[data-fav-league]').forEach(b => b.onclick = () => { toggleFavLeague(b.dataset.favLeague); const y = scrollY; route().then(() => scrollTo(0, y)); });
+  const rerender = () => { const y = scrollY; route().then(() => scrollTo(0, y)); };
+  document.querySelectorAll('[data-setlg]').forEach(b => b.onclick = () => { state.setLeague = b.dataset.setlg; rerender(); });
+  document.querySelectorAll('[data-fxmine]').forEach(b => b.onclick = () => { state.fxMine = !state.fxMine; store.set('mw-fxmine', state.fxMine ? '1' : null); rerender(); });
+  document.querySelectorAll('[data-fav-move]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.favMove;
+    if (i > 0) { [favs.teams[i - 1], favs.teams[i]] = [favs.teams[i], favs.teams[i - 1]]; saveFavs(); }
+    rerender();
+  });
+  const status = msg => { const el = document.querySelector('[data-sync-status]'); if (el) el.textContent = msg; };
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(syncLink()); status('Link copied. Open it on your other device.'); }
+    catch { status(syncLink()); }
+  };
+  document.querySelectorAll('[data-sync-copy]').forEach(b => b.onclick = copyLink);
+  document.querySelectorAll('[data-sync-share]').forEach(b => b.onclick = async () => {
+    if (!navigator.share) return copyLink();
+    try { await navigator.share({ title: 'My Matchwise teams', text: 'Open this to copy my teams and leagues to this device:', url: syncLink() }); }
+    catch { /* share sheet closed */ }
+  });
+  document.querySelectorAll('[data-sync-apply]').forEach(b => b.onclick = () => {
+    const got = decodeFavs(b.dataset.code);
+    if (!got) return;
+    if (b.dataset.syncApply === 'replace') favs = { teams: got.teams, leagues: got.leagues };
+    else {
+      got.teams.forEach(f => { if (!isFavTeam(f.league, f.name)) favs.teams.push(f); });
+      got.leagues.forEach(k => { if (!isFavLeague(k)) favs.leagues.push(k); });
+    }
+    saveFavs();
+    state.syncNote = `Added ${got.teams.length} team${got.teams.length === 1 ? '' : 's'} and ${got.leagues.length} league${got.leagues.length === 1 ? '' : 's'} to this device.`;
+    location.hash = '#/settings';
+  });
   const sq = document.querySelector('[data-setq]');
   if (sq) sq.oninput = () => {
     state.setQ = sq.value;
