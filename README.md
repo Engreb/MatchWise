@@ -4,6 +4,11 @@ A personal football prediction app for the Premier League, La Liga, Serie A, Bun
 
 ## Using it
 
+**Online:** https://engreb.github.io/MatchWise/ (updates itself every morning at 06:00 UTC via GitHub Actions).
+
+**On your PC:**
+
+
 1. **Update predictions:** double-click `update.bat`. It downloads the latest results and odds from football-data.co.uk and the season schedules from fixturedownload.com, then refits the model. It takes about 10 seconds. Run it before each round of matches.
 2. **Open the app:** double-click `start-app.bat`, which opens http://localhost:8770.
 
