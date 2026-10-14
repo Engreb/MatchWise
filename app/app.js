@@ -447,8 +447,54 @@ async function predictPage(meta) {
 }
 
 /* ---------- this season ---------- */
+const brierOf = (p, o) => p.reduce((a, v, k) => a + (v - (k === o ? 1 : 0)) ** 2, 0);
+function histToolbar(meta) {
+  const chips = [['all', 'All'], ...meta.leagues.map(l => [l.key, l.name])]
+    .map(([k, l]) => `<button class="chip" data-hl="${k}" aria-pressed="${state.histLeague === k}">${esc(l)}</button>`).join('');
+  return `<div class="toggle" role="group" aria-label="Which predictions">
+      <button data-hv="all" aria-pressed="${state.histView !== 'saved'}">All matches</button>
+      <button data-hv="saved" aria-pressed="${state.histView === 'saved'}">Saved before kick-off</button></div>
+    <div class="toolbar"><div class="chips" role="group" aria-label="Filter by league">${chips}</div></div>`;
+}
+
+/* Predictions actually stored before kick-off, settled against the result. */
+function savedView(meta, H) {
+  const rows = H.matches.filter(m => m.source === 'saved' && (state.histLeague === 'all' || m.league === state.histLeague));
+  const names = Object.fromEntries(meta.leagues.map(l => [l.key, l.name]));
+  const head = `${topbar()}<div class="page-head"><div><h1>This season</h1><p class="sub">Predictions exactly as this app saved them before kick-off, settled against the final score.</p></div></div>${histToolbar(meta)}`;
+  if (!rows.length) {
+    const next = meta.fixtures.map(f => f.kickoff).filter(k => hasTime(k) && dt(k) > Date.now()).sort()[0];
+    return `<div class="content">${head}<div class="card empty"><h3>Nothing settled yet</h3>
+      <p>The app started saving predictions on 14 October. They'll appear here once those matches are played${next ? `, starting ${fmtShort(next)}` : ''}.</p></div></div>`;
+  }
+  const adj = rows.filter(m => m.pb), mk = rows.filter(m => m.pmkt || m.mkt);
+  const rate = (arr, f) => arr.length ? pct(arr.filter(m => topIdx(f(m)) === m.outcome).length / arr.length) : '—';
+  const br = (arr, f) => arr.length ? (arr.reduce((s, m) => s + brierOf(f(m), m.outcome), 0) / arr.length).toFixed(3) : '—';
+  const cell = p => { const t = topIdx(p); return `${esc(['H', 'D', 'A'][t])} <span class="small muted num">${pct(p[t])}</span>`; };
+  return `<div class="content">${head}
+    <div class="card stats">
+      <div class="stat"><div class="lbl">Settled</div><div class="val num">${rows.length}</div><div class="meta">${adj.length} with odds-adjusted</div></div>
+      <div class="stat"><div class="lbl">Model only</div><div class="val num">${rate(rows, m => m.p)}</div><div class="meta">Brier ${br(rows, m => m.p)}</div></div>
+      <div class="stat"><div class="lbl">Odds-adjusted</div><div class="val num">${rate(adj, m => m.pb)}</div><div class="meta">Brier ${br(adj, m => m.pb)}</div></div>
+      <div class="stat"><div class="lbl">Bookmakers</div><div class="val num">${rate(mk, m => m.pmkt || m.mkt)}</div><div class="meta">Brier ${br(mk, m => m.pmkt || m.mkt)}</div></div>
+    </div>
+    <div class="card"><table><thead><tr><th>Result</th><th class="r">Model</th><th class="r">Odds-adj.</th><th class="r hide-m">Saved</th><th class="r">Outcome</th></tr></thead><tbody>
+      ${rows.map(m => {
+        const shown = m.pb || m.p, ok = topIdx(shown) === m.outcome;
+        return `<tr><td><div class="team" style="padding:0">${crest(m.home, 'sm')}<span style="font-weight:600" class="num">${esc(m.home)} ${m.hg}–${m.ag} ${esc(m.away)}</span></div>
+            <div class="small muted" style="margin-left:38px">${esc(names[m.league])} · ${fmtShort(m.date)}</div></td>
+          <td class="r">${cell(m.p)}</td><td class="r">${m.pb ? cell(m.pb) : '<span class="muted">—</span>'}</td>
+          <td class="r small muted hide-m">${fmtDate(m.saved_at)}${m.saves > 1 ? ` · ${m.saves} saves` : ''}</td>
+          <td class="r">${ok ? '<span class="pill ok">Correct</span>' : '<span class="pill">Missed</span>'}</td></tr>`;
+      }).join('')}
+    </tbody></table></div>
+    <p class="small muted" style="margin-top:12px">H, D and A are the home win, draw and away win picks with their chance. "Outcome" judges the odds-adjusted pick when there was one, otherwise the model's. The latest save before kick-off counts.</p>
+  </div>`;
+}
+
 async function historyPage(meta) {
   const H = await getJSON('history');
+  if (state.histView === 'saved') return savedView(meta, H);
   const rows = H.matches.filter(m => state.histLeague === 'all' || m.league === state.histLeague);
   const n = rows.length;
   const hits = rows.filter(m => topIdx(m.p) === m.outcome).length;
@@ -457,12 +503,10 @@ async function historyPage(meta) {
   const mBrier = withMkt.reduce((s, m) => s + m.mkt.reduce((a, v, k) => a + (v - (k === m.outcome ? 1 : 0)) ** 2, 0), 0) / (withMkt.length || 1);
   const mHits = withMkt.filter(m => topIdx(m.mkt) === m.outcome).length;
   const names = Object.fromEntries(meta.leagues.map(l => [l.key, l.name]));
-  const chips = [['all', 'All'], ...meta.leagues.map(l => [l.key, l.name])]
-    .map(([k, l]) => `<button class="chip" data-hl="${k}" aria-pressed="${state.histLeague === k}">${esc(l)}</button>`).join('');
   const saved = rows.filter(r => r.source === 'saved').length;
   return `<div class="content">${topbar()}
     <div class="page-head"><div><h1>This season</h1><p class="sub">Every ${H.season.slice(0, 2)}/${H.season.slice(2)} match so far, with the prediction made using only earlier results.</p></div></div>
-    <div class="toolbar"><div class="chips" role="group" aria-label="Filter by league">${chips}</div></div>
+    ${histToolbar(meta)}
     ${n ? `<div class="card stats">
       <div class="stat"><div class="lbl">Matches</div><div class="val num">${n}</div><div class="meta">${saved} saved before kick-off</div></div>
       <div class="stat"><div class="lbl">Top pick right</div><div class="val num">${pct(hits / n)}</div><div class="meta">Bookmakers ${withMkt.length ? pct(mHits / withMkt.length) : '—'}</div></div>
@@ -540,6 +584,7 @@ function bind() {
   document.querySelectorAll('[data-theme-toggle]').forEach(b => b.onclick = toggleTheme);
   document.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { state.league = b.dataset.league; document.getElementById('fixlist').innerHTML = fixturesList(); bindList(); document.querySelectorAll('[data-league]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
   document.querySelectorAll('[data-hl]').forEach(b => b.onclick = () => { state.histLeague = b.dataset.hl; route(); });
+  document.querySelectorAll('[data-hv]').forEach(b => b.onclick = () => { state.histView = b.dataset.hv; route(); });
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { state.view = b.dataset.view; const y = scrollY; route().then(() => scrollTo(0, y)); });
   document.querySelectorAll('[data-p]').forEach(s => s.onchange = () => {
     state.predict[s.dataset.p] = s.value;

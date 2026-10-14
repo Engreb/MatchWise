@@ -63,18 +63,21 @@ def _iso(dt: datetime | None, d: date) -> str:
     return dt.isoformat().replace("+00:00", "Z") if dt else d.isoformat()
 
 
-def _snapshot_index() -> dict:
-    """Latest saved pre-kick-off prediction per fixture key."""
+def _snapshot_index(snapshot_dir: Path | None = None) -> dict:
+    """Latest prediction saved before kick-off for each fixture, plus how many saves it had."""
+    snapshot_dir = snapshot_dir or SNAPSHOT_DIR
     idx = {}
-    if not SNAPSHOT_DIR.exists():
+    if not snapshot_dir.exists():
         return idx
-    for f in sorted(SNAPSHOT_DIR.glob("*.json")):
-        snap = json.loads(f.read_text())
+    snaps = [json.loads(f.read_text()) for f in snapshot_dir.glob("*.json")]
+    for snap in sorted(snaps, key=lambda s: s["created"]):
         for fx in snap["fixtures"]:
             ko = fx.get("kickoff")
             if ko and snap["created"] >= ko:  # only predictions saved before kick-off count
                 continue
-            idx[(fx["div"], fx["date"], fx["home"], fx["away"])] = {**fx, "saved_at": snap["created"]}
+            k = (fx["div"], fx["date"], fx["home"], fx["away"])
+            n = idx[k]["saves"] + 1 if k in idx else 1
+            idx[k] = {**fx, "saved_at": snap["created"], "saves": n}
     return idx
 
 
@@ -101,6 +104,16 @@ def upcoming_fixtures(div: str, teams: list[str], odds_rows: list[Match], now: d
     for m in odds_rows:
         if (m.home, m.away) not in seen and (m.kickoff_utc is None or m.kickoff_utc > now):
             out.append({"home": m.home, "away": m.away, "kickoff_utc": m.kickoff_utc, "date": m.date, "odds": m})
+    return out
+
+
+def saved_extras(s: dict) -> dict:
+    """Fields from a saved snapshot shown with the result: when it was saved and, if odds
+    were available, the odds-adjusted prediction the app displayed."""
+    out = {"saved_at": s["saved_at"], "saves": s.get("saves", 1)}
+    if "bH" in s:
+        out.update({"pb": [_r(s["bH"]), _r(s["bD"]), _r(s["bA"])], "pb_o25": _r(s["bo25"]),
+                    "pb_odds": s.get("odds_source"), "pmkt": s.get("market")})
     return out
 
 
@@ -174,10 +187,16 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             fixture_rows.append(row)
             if ok:
                 pr = pair_payload(model, f["home"], f["away"])
-                snapshot_rows.append({"div": div, "date": row["date"], "kickoff": row["kickoff"], "home": f["home"],
-                                      "away": f["away"], "H": pr[2], "D": pr[3], "A": pr[4], "o25": pr[7],
-                                      "btts": pr[10], "lam": pr[0], "mu": pr[1],
-                                      "model": MODEL_VERSION, "cutoff": cutoff.isoformat()})
+                snap = {"div": div, "date": row["date"], "kickoff": row["kickoff"], "home": f["home"],
+                        "away": f["away"], "H": pr[2], "D": pr[3], "A": pr[4], "o25": pr[7],
+                        "btts": pr[10], "lam": pr[0], "mu": pr[1],
+                        "model": MODEL_VERSION, "cutoff": cutoff.isoformat()}
+                if row["blend"]:  # the odds-adjusted prediction the app showed, and the odds behind it
+                    bp = row["blend"]
+                    snap.update({"bH": bp[2], "bD": bp[3], "bA": bp[4], "bo25": bp[7], "bbtts": bp[10],
+                                 "market": row["market"], "odds_source": row["odds_source"],
+                                 "odds_updated": row.get("odds_updated")})
+                snapshot_rows.append(snap)
 
         # This season so far: replayed with data available before each match, or the
         # prediction actually saved before kick-off when one exists.
@@ -190,11 +209,14 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
                 "o25": _r(s["o25"] if s else r["o25"]), "btts": _r(s["btts"] if s else r["btts"]),
                 "mkt": [_r(v) for v in r["mkt"]] if r["mkt"] else None,
                 "source": "saved" if s else "replay", "cutoff": s["cutoff"] if s else mdl.cutoff.isoformat(),
+                **(saved_extras(s) if s else {}),
             })
 
-    if snapshot_rows:
+    # One file per run (several runs a day on match days), so changes as odds move are kept.
+    # Offline runs are local experiments and are never saved as real pre-kick-off predictions.
+    if snapshot_rows and not offline:
         SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
-        (SNAPSHOT_DIR / f"{now:%Y-%m-%d}.json").write_text(json.dumps(
+        (SNAPSHOT_DIR / f"{now:%Y-%m-%dT%H%M}.json").write_text(json.dumps(
             {"created": now.isoformat().replace("+00:00", "Z"), "fixtures": snapshot_rows}, indent=1))
 
     if not offline:
