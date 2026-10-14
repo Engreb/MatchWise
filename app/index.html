@@ -4,27 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F8F9FB">
+<meta name="description" content="Football match predictions for the Premier League, La Liga, Serie A, Bundesliga and Ligue 1.">
 <title>Matchwise</title>
+<script>
+  // Apply a saved light/dark choice before first paint to avoid a flash.
+  try { var t = localStorage.getItem('mw-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Matchwise">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=6">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css?v=8">
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar" aria-label="Main navigation">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 5h-5L8 10z"/></svg>
-      </span>
-      Matchwise
-    </div>
+    <a class="brand" href="#/weekend"><span class="brand-mark" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 5h-5L8 10z"/></svg></span>Matchwise</a>
     <nav class="nav" id="nav"></nav>
     <div class="sidebar-foot" id="freshness"></div>
   </aside>
-  <main class="main" id="main" tabindex="-1"><div class="loading">Loading…</div></main>
+  <main class="main" id="main" tabindex="-1"></main>
 </div>
 <nav class="tabbar" id="tabbar" aria-label="Main navigation"></nav>
-<script src="app.js?v=6"></script>
+<script src="teams-meta.js?v=8"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
