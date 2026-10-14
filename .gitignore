@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.env
+.env
+engine/data/backtest.log
+secrets.env*
+*.env.txt
+
+# planning documents kept local
+Football_Prediction_App_Codex_Complete_Build_Pack.md
+Universal_App_Development_Master_Prompt.md
