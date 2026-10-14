@@ -4,7 +4,12 @@ name: Update predictions
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # 06:00 UTC daily
+    - cron: "0 6 * * *"    # 06:00 UTC daily
+    # Extra runs close to weekend kick-offs, for fresher odds (about 350 of 500 free credits a month).
+    - cron: "0 15 * * 5"   # Friday 15:00 UTC
+    - cron: "30 9 * * 6"   # Saturday 09:30 UTC
+    - cron: "0 13 * * 6"   # Saturday 13:00 UTC
+    - cron: "0 10 * * 0"   # Sunday 10:00 UTC
   workflow_dispatch:
   push:
     branches: [main]
@@ -40,6 +45,8 @@ jobs:
 
       - name: Update predictions
         working-directory: engine
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python -m matchwise update
 
       - name: Save new data

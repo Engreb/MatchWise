@@ -72,14 +72,14 @@ def _ipv4_first(*args, **kwargs):
 socket.getaddrinfo = _ipv4_first
 
 
-def _fetch(url: str) -> bytes:
+def _fetch(url: str, timeout: int = 30, attempts: int = 3) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": "matchwise-personal/0.1"})
-    for attempt in range(3):
+    for attempt in range(attempts):
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read()
         except Exception:
-            if attempt == 2:
+            if attempt == attempts - 1:
                 raise
             time.sleep(2 * (attempt + 1))
     raise RuntimeError("unreachable")
@@ -101,9 +101,12 @@ def download(force_current: bool = True, log=print) -> None:
         log(f"  downloading {slug} schedule")
         try:
             (RAW_DIR / f"schedule_{CURRENT_SEASON}_{div}.json").write_bytes(
-                _fetch(SCHEDULE_URL.format(slug=slug, yy=CURRENT_SEASON[:2])))
-        except Exception as e:  # keep the previous copy; the app shows its age
-            log(f"    schedule download failed ({e}); keeping cached copy")
+                _fetch(SCHEDULE_URL.format(slug=slug, yy=CURRENT_SEASON[:2]), timeout=15, attempts=1))
+        except Exception as e:
+            # Schedules change rarely, so the saved copy is fine; if the site is down, don't
+            # spend minutes timing out on every league.
+            log(f"    schedule site unreachable ({type(e).__name__}); using saved schedules")
+            break
 
 
 def _decode(raw: bytes) -> str:

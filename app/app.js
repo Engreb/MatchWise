@@ -83,6 +83,12 @@ const fmtDate = s => dt(s).toLocaleDateString('en-GB', { day: 'numeric', month: 
 const topIdx = p => p.indexOf(Math.max(...p));
 const ord = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)] || 'th');
 const matchHref = (lg, h, a) => `#/match/${lg}/${encodeURIComponent(h)}/${encodeURIComponent(a)}`;
+function ago(s) {
+  const m = Math.max(0, Math.round((Date.now() - new Date(s)) / 6e4));
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  return h < 48 ? `${h} h ago` : `${Math.round(h / 24)} days ago`;
+}
 function countdown(s) {
   if (!hasTime(s)) return '';
   const ms = dt(s) - Date.now();
@@ -320,11 +326,15 @@ async function matchPage(meta, lgKey, home, away) {
   let market = '';
   if (fx && fx.market) {
     const lbl = [home + ' win', 'Draw', away + ' win'];
-    market = `<div class="card"><div class="card-head"><h3>Model vs bookmakers</h3><span class="small muted">Bookmaker margin removed</span></div>
-      <table><thead><tr><th>Outcome</th><th class="r">Model only</th><th class="r">Bookmakers</th><th class="r hide-m">Avg odds</th>${fx.odds_skybet ? '<th class="r hide-m">Sky Bet</th>' : ''}</tr></thead><tbody>
-      ${[0, 1, 2].map(k => `<tr><td>${esc(lbl[k])}</td><td class="r num">${pct([modelP.H, modelP.D, modelP.A][k], 1)}</td><td class="r num">${pct(fx.market[k], 1)}</td><td class="r num hide-m">${fx.odds_avg ? fx.odds_avg[k].toFixed(2) : '—'}</td>${fx.odds_skybet ? `<td class="r num hide-m">${fx.odds_skybet[k].toFixed(2)}</td>` : ''}</tr>`).join('')}
+    const odd = (arr, k) => arr ? arr[k].toFixed(2) : '—';
+    const src = fx.odds_source === 'The Odds API'
+      ? `Average of ${fx.odds_books} UK bookmakers via The Odds API${fx.odds_updated ? `, updated ${ago(fx.odds_updated)}` : ''}.`
+      : 'Average pre-match odds via football-data.co.uk.';
+    market = `<div class="card"><div class="card-head"><h3>Model vs bookmakers</h3><span class="small muted">Margin removed</span></div>
+      <table><thead><tr><th>Outcome</th><th class="r">Model</th><th class="r">Bookies</th><th class="r">Sky Bet</th><th class="r">Coral</th><th class="r hide-m">Average</th></tr></thead><tbody>
+      ${[0, 1, 2].map(k => `<tr><td>${esc(lbl[k])}</td><td class="r num">${pct([modelP.H, modelP.D, modelP.A][k])}</td><td class="r num">${pct(fx.market[k])}</td><td class="r num">${odd(fx.odds_skybet, k)}</td><td class="r num">${odd(fx.odds_coral, k)}</td><td class="r num hide-m">${odd(fx.odds_avg, k)}</td></tr>`).join('')}
       </tbody></table>
-      <p class="card-foot">Bookmaker prices were more accurate than the model alone in testing. A big disagreement more often means the model is missing news than that the bookmakers are wrong.</p></div>`;
+      <p class="card-foot">${src} Sky Bet, Coral and Average columns are decimal odds. Bookmaker prices were more accurate than the model alone in testing, so a big disagreement more often means the model is missing news.</p></div>`;
   }
   const newsCard = await teamNews(lgKey, home, away);
   const atts = L.teams.map(x => x.attack), defs = L.teams.map(x => -x.defence);

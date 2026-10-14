@@ -101,6 +101,32 @@ ALIASES = {
 }
 
 
+# The Odds API spellings (only those that differ from the entries above).
+ALIASES.update({
+    # Premier League
+    "Manchester City": "Man City", "Manchester United": "Man United", "Tottenham Hotspur": "Tottenham",
+    "Brighton and Hove Albion": "Brighton", "Newcastle United": "Newcastle", "Leeds United": "Leeds",
+    "Wolverhampton Wanderers": "Wolves", "West Ham United": "West Ham", "AFC Bournemouth": "Bournemouth",
+    "Leicester City": "Leicester",
+    # La Liga
+    "Athletic Bilbao": "Ath Bilbao", "Atlético Madrid": "Ath Madrid", "Real Racing Club de Santander": "Santander", "Atletico Madrid": "Ath Madrid",
+    "Celta Vigo": "Celta", "Alavés": "Alaves", "Espanyol": "Espanol", "Racing Santander": "Santander",
+    "Deportivo La Coruña": "La Coruna", "Deportivo La Coruna": "La Coruna", "Málaga": "Malaga",
+    # Serie A
+    "Inter Milan": "Inter", "AS Roma": "Roma", "Atalanta BC": "Atalanta", "Hellas Verona": "Verona",
+    # Bundesliga
+    "Borussia Monchengladbach": "M'gladbach", "Borussia Mönchengladbach": "M'gladbach",
+    "SC Freiburg": "Freiburg", "FSV Mainz 05": "Mainz", "Mainz 05": "Mainz", "Bayer Leverkusen": "Leverkusen",
+    "Werder Bremen": "Werder Bremen", "Augsburg": "Augsburg", "1. FC Heidenheim": "Heidenheim",
+    "SC Paderborn": "Paderborn", "Schalke 04": "Schalke 04", "1. FC Union Berlin": "Union Berlin",
+    "Eintracht Frankfurt": "Ein Frankfurt", "VfL Wolfsburg": "Wolfsburg", "FC St. Pauli": "St Pauli",
+    # Ligue 1
+    "Paris Saint Germain": "Paris SG", "RC Lens": "Lens", "AS Monaco": "Monaco", "Olympique Marseille": "Marseille",
+    "Olympique Lyonnais": "Lyon", "Stade Rennais": "Rennes", "Stade Brestois 29": "Brest", "Brest": "Brest",
+    "RC Strasbourg": "Strasbourg", "Le Havre AC": "Le Havre", "Saint Etienne": "St Etienne",
+})
+
+
 def canonical(name: str, known: set[str]) -> str | None:
     """football-data.co.uk name for a fixturedownload.com name, or None if unknown."""
     name = name.strip()

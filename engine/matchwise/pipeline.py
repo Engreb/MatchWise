@@ -11,7 +11,7 @@ from .backtest import fit_current, load_config, preseason_priors, record, replay
 from .blend import blended_prediction
 from .data import CURRENT_SEASON, LEAGUES, ROOT, Match, load_fixtures, load_results, load_schedule
 from .model import DCModel, fit
-from . import news
+from . import news, odds_api
 from .teams import canonical
 
 SNAPSHOT_DIR = ROOT / "data" / "snapshots"
@@ -112,6 +112,10 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
     snaps = _snapshot_index()
     leagues_meta, fixture_rows, history_rows, snapshot_rows = [], [], [], []
     epl_teams: set[str] = set()
+    odds_key = None if offline else odds_api.api_key()
+    budget, odds_snap = odds_api.Budget(), {}
+    if not odds_key and not offline:
+        log("  odds: no ODDS_API_KEY set; using football-data.co.uk odds only")
 
     for div, (key, name) in LEAGUES.items():
         matches = load_results(div)
@@ -139,17 +143,33 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
         leagues_meta.append({"key": key, "name": name, "data_through": last.isoformat(),
                              "matches_this_season": len(cur), "teams": len(teams)})
 
-        for f in upcoming_fixtures(div, teams, fx, now, log):
+        upcoming = upcoming_fixtures(div, teams, fx, now, log)
+        live = {}
+        soon = any(f["kickoff_utc"] and (f["kickoff_utc"] - now).total_seconds() <= odds_api.ODDS_HOURS * 3600 for f in upcoming)
+        if odds_key and soon:
+            live = odds_api.fixture_odds(div, set(teams), odds_key, budget, canonical, log)
+            odds_snap.update({(div, h, a): v for (h, a), v in live.items()})
+
+        for f in upcoming:
             ok = f["home"] in teams and f["away"] in teams
-            odds = f["odds"]
+            fd, lv = f["odds"], live.get((f["home"], f["away"]))
+            # Prefer the fresher The Odds API prices; fall back to football-data's pre-match odds.
+            if lv:
+                market, o25 = lv["market"], lv["market_o25"]
+                src = {"odds_source": "The Odds API", "odds_updated": lv["updated"], "odds_books": lv["n_books"],
+                       "odds_avg": lv["odds_avg"], "odds_skybet": lv["books"].get("skybet"), "odds_coral": lv["books"].get("coral")}
+            elif fd and fd.market_open:
+                market, o25 = list(fd.market_open), fd.market_o25_open
+                src = {"odds_source": "football-data.co.uk", "odds_updated": None, "odds_books": None,
+                       "odds_avg": list(fd.odds_avg) if fd.odds_avg else None,
+                       "odds_skybet": list(fd.odds_skybet) if fd.odds_skybet else None, "odds_coral": None}
+            else:
+                market, o25, src = None, None, {"odds_source": None}
             row = {"league": key, "div": div, "date": f["date"].isoformat(), "kickoff": _iso(f["kickoff_utc"], f["date"]),
                    "round": f.get("round"), "home": f["home"], "away": f["away"], "assessable": ok,
-                   "market": [_r(v) for v in odds.market_open] if odds and odds.market_open else None,
-                   "odds_avg": list(odds.odds_avg) if odds and odds.odds_avg else None,
-                   "odds_skybet": list(odds.odds_skybet) if odds and odds.odds_skybet else None,
-                   "blend": None}
-            if ok and row["market"] and cfg.get("blend"):
-                b = blended_prediction(model.predict(f["home"], f["away"]), odds.market_open, odds.market_o25_open, cfg["blend"])
+                   "market": [_r(v) for v in market] if market else None, **src, "blend": None}
+            if ok and market and cfg.get("blend"):
+                b = blended_prediction(model.predict(f["home"], f["away"]), market, o25, cfg["blend"])
                 row["blend"] = payload(b)
             fixture_rows.append(row)
             if ok:
@@ -179,6 +199,7 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
 
     if not offline:
         news.write(out_dir, epl_teams, log)
+    odds_api.archive(odds_snap, now)
     fixture_rows.sort(key=lambda r: (r["kickoff"], r["league"], r["home"]))
     history_rows.sort(key=lambda r: (r["date"], r["home"]), reverse=True)
     common = [r for r in history_rows if r["mkt"]]
@@ -190,7 +211,8 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
     status = json.loads(acc_path.read_text())["status"] if acc_path.exists() else "unvalidated"
     meta = {"generated_at": now.isoformat().replace("+00:00", "Z"), "model_version": MODEL_VERSION,
             "config": cfg, "status": status, "leagues": leagues_meta,
-            "source": "football-data.co.uk"}
+            "source": "football-data.co.uk",
+            "odds": {"provider": "The Odds API" if budget.calls else None, "calls": budget.calls, "credits_remaining": budget.remaining}}
     (out_dir / "fixtures.json").write_text(json.dumps({**meta, "fixtures": fixture_rows}, indent=1))
     log(f"Wrote {len(fixture_rows)} fixtures, {len(history_rows)} history rows. Status: {status}")
     return meta
