@@ -211,14 +211,14 @@ def load_results(div: str) -> list[Match]:
     return out
 
 
-def load_schedule(div: str) -> list[dict]:
-    """Unplayed fixtures from the season schedule: raw names, UTC kick-off."""
+def load_schedule(div: str, include_played: bool = False) -> list[dict]:
+    """Fixtures from the season schedule (unplayed only by default): raw names, UTC kick-off."""
     path = RAW_DIR / f"schedule_{CURRENT_SEASON}_{div}.json"
     if not path.exists():
         return []
     out = []
     for x in json.loads(path.read_text(encoding="utf-8")):
-        if x.get("HomeTeamScore") is not None:
+        if x.get("HomeTeamScore") is not None and not include_played:
             continue
         ko = datetime.strptime(x["DateUtc"].replace("Z", ""), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         out.append({"home": x["HomeTeam"], "away": x["AwayTeam"], "kickoff_utc": ko,

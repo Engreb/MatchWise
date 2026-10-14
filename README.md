@@ -47,6 +47,10 @@ When bookmaker odds are published for a fixture (usually a few days before), the
 
 Team names in the schedule are mapped explicitly in `engine/matchwise/teams.py`. An unknown name is reported during the update and that fixture shows as "unable to assess" until it's added.
 
+## Tables and projections
+
+Each update simulates the rest of every league season 10,000 times from the model's predictions (allowing team strength to drift over the season) to give projected points and title, top-4/promotion and relegation chances, plus each team's chance of finishing in every position. Code: `engine/matchwise/projections.py`.
+
 ## Team news
 
 Premier League injuries, suspensions and doubts come from the official Fantasy Premier League data. They appear on each Premier League match page for context only; they are not used in predictions yet. Each update archives them in `engine/data/news/` so their value can be tested later.

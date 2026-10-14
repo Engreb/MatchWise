@@ -20,19 +20,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=11">
+<link rel="stylesheet" href="app.css?v=12">
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar" aria-label="Main navigation">
     <a class="brand" href="#/weekend"><span class="brand-mark" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7l4 3-1.5 5h-5L8 10z"/></svg></span>Matchwise</a>
+    <button class="searchbtn" data-search-open><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search teams <kbd style="margin-left:auto;font:11px Inter;color:var(--text-3)">/</kbd></button>
     <nav class="nav" id="nav"></nav>
     <div class="sidebar-foot" id="freshness"></div>
   </aside>
   <main class="main" id="main" tabindex="-1"></main>
 </div>
 <nav class="tabbar" id="tabbar" aria-label="Main navigation"></nav>
-<script src="teams-meta.js?v=11"></script>
-<script src="app.js?v=11"></script>
+<div class="overlay" id="search"></div>
+<script src="teams-meta.js?v=12"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

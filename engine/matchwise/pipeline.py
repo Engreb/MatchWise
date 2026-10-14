@@ -11,7 +11,9 @@ from .backtest import FEEDERS, fit_current, load_config, preseason_priors, recor
 from .blend import blended_prediction
 from .data import CURRENT_SEASON, LEAGUES, ROOT, Match, load_fixtures, load_results, load_schedule
 from .model import DCModel, fit
-from . import news, odds_api
+from collections import Counter
+
+from . import news, odds_api, projections
 from .teams import canonical
 
 SNAPSHOT_DIR = ROOT / "data" / "snapshots"
@@ -38,6 +40,12 @@ def payload(p) -> list:
 
 
 PAIR_FIELDS = ["lam", "mu", "H", "D", "A", "o05", "o15", "o25", "o35", "o45", "btts", f"grid{GRID_N}x{GRID_N}"]
+
+
+def strength(model: DCModel, team: str) -> float:
+    """Expected goal difference against an average side on neutral ground."""
+    i = model.index(team)
+    return float(np.exp(model.intercept + model.attack[i]) - np.exp(model.intercept + model.defence[i]))
 
 
 def team_table(model: DCModel, teams: list[str]) -> list[dict]:
@@ -124,6 +132,7 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
     fixtures = load_fixtures()
     snaps = _snapshot_index()
     leagues_meta, fixture_rows, history_rows, snapshot_rows = [], [], [], []
+    tables: dict[str, dict] = {}
     epl_teams: set[str] = set()
     odds_key = None if offline else odds_api.api_key()
     budget, odds_snap = odds_api.Budget(), {}
@@ -151,8 +160,10 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             "model": {"version": MODEL_VERSION, "cutoff": cutoff.isoformat(), "n_matches": model.n_matches,
                       "home_adv": _r(model.home_adv), "home_effect_pct": round((np.exp(model.home_adv) - 1) * 100),
                       "intercept": _r(model.intercept), "rho": _r(model.rho), **cfg},
-            "teams": table, "pair_fields": PAIR_FIELDS, "pairs": pairs,
+            "teams": table, "pair_fields": PAIR_FIELDS,
         }, separators=(",", ":")))
+        (out_dir / f"pairs-{key}.json").write_text(json.dumps({"key": key, "pair_fields": PAIR_FIELDS, "pairs": pairs},
+                                                              separators=(",", ":")))
         if key == "epl":
             epl_teams = set(teams)
         leagues_meta.append({"key": key, "name": name, "data_through": last.isoformat(),
@@ -182,7 +193,8 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
                 market, o25, src = None, None, {"odds_source": None}
             row = {"league": key, "div": div, "date": f["date"].isoformat(), "kickoff": _iso(f["kickoff_utc"], f["date"]),
                    "round": f.get("round"), "home": f["home"], "away": f["away"], "assessable": ok,
-                   "market": [_r(v) for v in market] if market else None, **src, "blend": None}
+                   "market": [_r(v) for v in market] if market else None, **src, "blend": None,
+                   "model": pairs.get(f"{f['home']}|{f['away']}") if ok else None}
             if ok and market and cfg.get("blend"):
                 b = blended_prediction(model.predict(f["home"], f["away"]), market, o25, cfg["blend"])
                 row["blend"] = payload(b)
@@ -202,7 +214,16 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
 
         # This season so far: replayed with data available before each match, or the
         # prediction actually saved before kick-off when one exists.
+        trend_dates, trend = [], {t: [] for t in teams}
+
+        def add_trend(mdl):
+            trend_dates.append(mdl.cutoff.isoformat())
+            for t in teams:
+                trend[t].append(_r(strength(mdl, t)) if t in mdl.teams else None)
+
         for m, p, mdl, _ in replay(matches, CURRENT_SEASON, cfg["xi"], cfg["ridge"], alpha=cfg.get("alpha", 1.0), feeder=feeder):
+            if not trend_dates or trend_dates[-1] != mdl.cutoff.isoformat():
+                add_trend(mdl)  # one point per weekly refit: how each team's rating moved this season
             r = record(m, p)
             s = snaps.get((div, r["date"], m.home, m.away))
             history_rows.append({
@@ -213,6 +234,27 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
                 "source": "saved" if s else "replay", "cutoff": s["cutoff"] if s else mdl.cutoff.isoformat(),
                 **(saved_extras(s) if s else {}),
             })
+        if not trend_dates or trend_dates[-1] != model.cutoff.isoformat():
+            add_trend(model)
+
+        # Projected final table: every remaining scheduled game simulated from the current model.
+        known = set(teams)
+        played = Counter((m.home, m.away) for m in cur)
+        scheduled = Counter()
+        for s_ in load_schedule(div, include_played=True):
+            h, a = canonical(s_["home"], known), canonical(s_["away"], known)
+            if h and a:
+                scheduled[(h, a)] += 1
+        remaining = [pair for pair, n in scheduled.items() for _ in range(max(0, n - played[pair]))]
+        proj = projections.project(div, cur, remaining, teams, model.rates)
+        form = {t: [] for t in teams}
+        for m in sorted(cur, key=lambda m: (m.date, m.kickoff_utc or datetime.min.replace(tzinfo=timezone.utc))):
+            for t, gf, ga in ((m.home, m.hg, m.ag), (m.away, m.ag, m.hg)):
+                if t in form:
+                    form[t].append("W" if gf > ga else "D" if gf == ga else "L")
+        tables[key] = {"name": name, **proj, "form": {t: v[-5:] for t, v in form.items()},
+                       "trend": {"dates": trend_dates, "teams": trend}}
+        log(f"    table: {len(cur)} results, {len(remaining)} games left simulated")
 
     # One file per run (several runs a day on match days), so changes as odds move are kept.
     # Offline runs are local experiments and are never saved as real pre-kick-off predictions.
@@ -224,6 +266,7 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
     if not offline:
         news.write(out_dir, epl_teams, log)
     odds_api.archive(odds_snap, now)
+    (out_dir / "tables.json").write_text(json.dumps(tables, separators=(",", ":")), encoding="utf-8")
     fixture_rows.sort(key=lambda r: (r["kickoff"], r["league"], r["home"]))
     history_rows.sort(key=lambda r: (r["date"], r["home"]), reverse=True)
     common = [r for r in history_rows if r["mkt"]]
@@ -231,12 +274,17 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
                "market_common": summarize_1x2(common, "mkt")}
     (out_dir / "history.json").write_text(json.dumps({"season": CURRENT_SEASON, "summary": summary,
                                                        "matches": history_rows}, separators=(",", ":")))
+    hit = lambda rows, k: sum(1 for r in rows if r.get(k) and max(range(3), key=lambda i: r[k][i]) == r["outcome"])
+    latest = history_rows[0]["date"] if history_rows else None
+    last7 = [r for r in history_rows if latest and (date.fromisoformat(latest) - date.fromisoformat(r["date"])).days < 7]
+    recent = {"last7": {"n": len(last7), "hits": hit(last7, "p"), "mkt_n": sum(1 for r in last7 if r["mkt"]), "mkt_hits": hit(last7, "mkt")},
+              "season": {"n": len(history_rows), "hits": hit(history_rows, "p")}}
     acc_path = out_dir / "accuracy.json"
     status = json.loads(acc_path.read_text())["status"] if acc_path.exists() else "unvalidated"
     meta = {"generated_at": now.isoformat().replace("+00:00", "Z"), "model_version": MODEL_VERSION,
-            "config": cfg, "status": status, "leagues": leagues_meta,
+            "config": cfg, "status": status, "leagues": leagues_meta, "recent": recent,
             "source": "football-data.co.uk",
             "odds": {"provider": "The Odds API" if budget.calls else None, "calls": budget.calls, "credits_remaining": budget.remaining}}
-    (out_dir / "fixtures.json").write_text(json.dumps({**meta, "fixtures": fixture_rows}, indent=1))
+    (out_dir / "fixtures.json").write_text(json.dumps({**meta, "fixtures": fixture_rows}, separators=(",", ":")))
     log(f"Wrote {len(fixture_rows)} fixtures, {len(history_rows)} history rows. Status: {status}")
     return meta
