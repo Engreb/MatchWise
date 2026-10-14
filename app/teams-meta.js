@@ -50,6 +50,41 @@ window.TEAM_META = {
   'Reims': ['SDR', '#E2001A', '#FFFFFF'], 'St Etienne': ['ASSE', '#009639', '#FFFFFF'],
 };
 
+Object.assign(window.TEAM_META, {
+  // Championship
+  'Birmingham': ['BIR', '#1B3D8F', '#FFFFFF'], 'Blackburn': ['BLB', '#009EE0', '#FFFFFF'], 'Bolton': ['BOL', '#FFFFFF', '#1C1B4D'],
+  'Bristol City': ['BRC', '#E21A23', '#FFFFFF'], 'Cardiff': ['CAR', '#0070B5', '#FFFFFF'], 'Charlton': ['CHA', '#D4021D', '#FFFFFF'],
+  'Derby': ['DER', '#FFFFFF', '#111111'], 'Lincoln': ['LIN', '#E20E17', '#FFFFFF'], 'Middlesbrough': ['MID', '#E11B22', '#FFFFFF'],
+  'Millwall': ['MIL', '#001D5E', '#FFFFFF'], 'Norwich': ['NOR', '#FFF200', '#00A650'], 'Portsmouth': ['POR', '#001489', '#FFFFFF'],
+  'Preston': ['PNE', '#FFFFFF', '#002B5C'], 'QPR': ['QPR', '#1D5BA4', '#FFFFFF'], 'Stoke': ['STK', '#E03A3E', '#FFFFFF'],
+  'Swansea': ['SWA', '#FFFFFF', '#111111'], 'Watford': ['WAT', '#FBEE23', '#111111'], 'West Brom': ['WBA', '#122F67', '#FFFFFF'],
+  'Wrexham': ['WRE', '#D7182A', '#FFFFFF'], 'Sheffield Weds': ['SHW', '#2B5CAA', '#FFFFFF'], 'Oxford': ['OXF', '#FFD100', '#002147'],
+  'Plymouth': ['PLY', '#00573F', '#FFFFFF'], 'Luton': ['LUT', '#F78F1E', '#002D62'],
+  // Scottish Premiership
+  'Aberdeen': ['ABE', '#C8102E', '#FFFFFF'], 'Celtic': ['CEL', '#018749', '#FFFFFF'], 'Dundee': ['DUN', '#1A2A57', '#FFFFFF'],
+  'Dundee United': ['DUU', '#F47920', '#111111'], 'Falkirk': ['FAL', '#002D62', '#FFFFFF'], 'Hearts': ['HEA', '#8A1C34', '#FFFFFF'],
+  'Hibernian': ['HIB', '#00703C', '#FFFFFF'], 'Kilmarnock': ['KIL', '#003DA5', '#FFFFFF'], 'Motherwell': ['MOT', '#F6A500', '#7A1E28'],
+  'Rangers': ['RAN', '#1B458F', '#FFFFFF'], 'St Johnstone': ['STJ', '#0059A9', '#FFFFFF'], 'St Mirren': ['STM', '#111111', '#FFFFFF'],
+  'Ross County': ['ROS', '#001E61', '#FFFFFF'], 'Livingston': ['LIV', '#FFD100', '#111111'],
+  // Eredivisie
+  'AZ Alkmaar': ['AZ', '#E2001A', '#FFFFFF'], 'Ajax': ['AJX', '#FFFFFF', '#D2122E'], 'Cambuur': ['CAM', '#FFE500', '#0047AB'],
+  'Den Haag': ['ADO', '#FFD200', '#00843D'], 'Excelsior': ['EXC', '#111111', '#E30613'], 'Feyenoord': ['FEY', '#E30613', '#FFFFFF'],
+  'For Sittard': ['FOR', '#FFD700', '#00843D'], 'Go Ahead Eagles': ['GAE', '#E30613', '#FFDD00'], 'Groningen': ['GRO', '#00A651', '#FFFFFF'],
+  'Heerenveen': ['HEE', '#0057B8', '#FFFFFF'], 'Nijmegen': ['NEC', '#C8102E', '#FFFFFF'], 'PSV Eindhoven': ['PSV', '#ED1C24', '#FFFFFF'],
+  'Sparta Rotterdam': ['SPA', '#E30613', '#FFFFFF'], 'Telstar': ['TEL', '#FFFFFF', '#111111'], 'Twente': ['TWE', '#E30613', '#FFFFFF'],
+  'Utrecht': ['UTR', '#E30613', '#FFFFFF'], 'Willem II': ['WIL', '#ED1C24', '#FFFFFF'], 'Zwolle': ['PEC', '#0057B8', '#FFFFFF'],
+  'Breda': ['NAC', '#FFD200', '#111111'], 'Heracles': ['HER', '#111111', '#FFFFFF'], 'Volendam': ['VOL', '#F58025', '#111111'],
+  'Almere City': ['ALM', '#E30613', '#111111'],
+  // Primeira Liga
+  'Academico Viseu': ['ACV', '#111111', '#FFD200'], 'Alverca': ['ALV', '#E30613', '#FFFFFF'], 'Arouca': ['ARO', '#FFDD00', '#111111'],
+  'Benfica': ['SLB', '#E30613', '#FFFFFF'], 'Casa Pia': ['CPA', '#111111', '#FFFFFF'], 'Estoril': ['EST', '#FFE600', '#0047AB'],
+  'Estrela': ['EAM', '#E30613', '#FFFFFF'], 'Famalicao': ['FAM', '#0047AB', '#FFFFFF'], 'Gil Vicente': ['GIL', '#E30613', '#FFFFFF'],
+  'Guimaraes': ['VSC', '#FFFFFF', '#111111'], 'Maritimo': ['MAR', '#E30613', '#00843D'], 'Moreirense': ['MOR', '#00843D', '#FFFFFF'],
+  'Nacional': ['NAC', '#111111', '#FFFFFF'], 'Porto': ['FCP', '#003DA5', '#FFFFFF'], 'Rio Ave': ['RAV', '#00843D', '#FFFFFF'],
+  'Santa Clara': ['SCL', '#E30613', '#FFFFFF'], 'Sp Braga': ['SCB', '#E30613', '#FFFFFF'], 'Sp Lisbon': ['SCP', '#008057', '#FFFFFF'],
+  'AVS': ['AVS', '#E30613', '#FFFFFF'], 'Boavista': ['BOA', '#111111', '#FFFFFF'], 'Farense': ['FAR', '#111111', '#FFFFFF'],
+});
+
 window.teamMeta = function (name) {
   const m = window.TEAM_META[name];
   if (m) return { code: m[0], bg: m[1], fg: m[2] };

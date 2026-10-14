@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .backtest import fit_current, load_config, preseason_priors, record, replay, summarize_1x2
+from .backtest import FEEDERS, fit_current, load_config, preseason_priors, record, replay, summarize_1x2
 from .blend import blended_prediction
 from .data import CURRENT_SEASON, LEAGUES, ROOT, Match, load_fixtures, load_results, load_schedule
 from .model import DCModel, fit
@@ -137,8 +137,10 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
         fx = [f for f in fixtures if f.div == div]
         last = max(m.date for m in played)
         cutoff = last + timedelta(days=1)
+        # Promoted teams rated from the second division when the backtest showed it helps.
+        feeder = load_results(FEEDERS[div]) if cfg.get("link", {}).get(div) and div in FEEDERS else None
         teams, priors, _ = preseason_priors(matches, CURRENT_SEASON, cfg["xi"], cfg["ridge"],
-                                         extra_teams={t for f in fx for t in (f.home, f.away)})
+                                         extra_teams={t for f in fx for t in (f.home, f.away)}, feeder=feeder)
         model = fit_current(matches, cutoff, cfg, teams, priors)
         log(f"  {name}: {model.n_matches} matches to {last}, {len(teams)} teams, converged={model.converged}")
 
@@ -159,7 +161,7 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
         upcoming = upcoming_fixtures(div, teams, fx, now, log)
         live = {}
         soon = any(f["kickoff_utc"] and (f["kickoff_utc"] - now).total_seconds() <= odds_api.ODDS_HOURS * 3600 for f in upcoming)
-        if odds_key and soon:
+        if odds_key and soon and div in odds_api.LIVE_DIVS:
             live = odds_api.fixture_odds(div, set(teams), odds_key, budget, canonical, log)
             odds_snap.update({(div, h, a): v for (h, a), v in live.items()})
 
@@ -200,7 +202,7 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
 
         # This season so far: replayed with data available before each match, or the
         # prediction actually saved before kick-off when one exists.
-        for m, p, mdl, _ in replay(matches, CURRENT_SEASON, cfg["xi"], cfg["ridge"], alpha=cfg.get("alpha", 1.0)):
+        for m, p, mdl, _ in replay(matches, CURRENT_SEASON, cfg["xi"], cfg["ridge"], alpha=cfg.get("alpha", 1.0), feeder=feeder):
             r = record(m, p)
             s = snaps.get((div, r["date"], m.home, m.away))
             history_rows.append({

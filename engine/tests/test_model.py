@@ -102,3 +102,49 @@ def test_team_without_matches_takes_prior():
     m = fit(matches, end, ridge=3.0, teams=["NEW"], priors={"NEW": (-0.3, 0.3)})
     i = m.index("NEW")
     assert m.attack[i] < -0.1 and m.defence[i] > 0.1
+
+
+def test_joint_division_gradient_is_correct():
+    from scipy.optimize import check_grad
+    from matchwise.model import _neg_ll
+    rng = np.random.default_rng(3)
+    n, m = 6, 80
+    hi, ai = rng.integers(0, n, m), rng.integers(0, n, m)
+    keep = hi != ai
+    hi, ai = hi[keep], ai[keep]
+    x, y = rng.poisson(1.4, len(hi)).astype(float), rng.poisson(1.1, len(hi)).astype(float)
+    w, grp = np.ones(len(hi)), rng.integers(0, 2, len(hi))
+    th = rng.normal(0, 0.1, 1 + 2 * n + 1); th[2] = -0.05
+    f = lambda t: _neg_ll(t, hi, ai, x, y, w, n, 1.0, np.zeros(n), np.zeros(n), False, grp, 2)[0]
+    g = lambda t: _neg_ll(t, hi, ai, x, y, w, n, 1.0, np.zeros(n), np.zeros(n), False, grp, 2)[1]
+    assert check_grad(f, g, th) < 1e-4
+
+
+def test_joint_fit_places_promoted_team_on_top_division_scale():
+    from matchwise.model import linked_priors
+    rng = np.random.default_rng(5)
+    top = [f"T{i}" for i in range(8)] + ["P"]          # P is promoted into the top division
+    second = [f"S{i}" for i in range(7)] + ["P", "R"]  # R went down; P came up
+    strength = {**{t: s for t, s in zip(top[:8], np.linspace(-0.3, 0.4, 8))},
+                **{t: s for t, s in zip(second[:7], np.linspace(-0.9, -0.3, 7))}, "P": 0.05, "R": -0.45}
+    out, k = [], 0
+    for div, teams, lvl in (("A", [t for t in top if t != "P"] + ["R"], 0.25), ("B", second, 0.1)):
+        for _ in range(4):
+            for h in teams:
+                for a in teams:
+                    if h != a:
+                        lam = math.exp(lvl + 0.25 + strength[h] - strength[a] * 0.8)
+                        mu = math.exp(lvl + strength[a] - strength[h] * 0.8)
+                        out.append(Match(div, "s", date(2021, 8, 1) + timedelta(days=k // 6), None, h, a,
+                                         int(rng.poisson(lam)), int(rng.poisson(mu))))
+                        k += 1
+    cutoff = out[-1].date + timedelta(days=1)
+    top_only = fit([m for m in out if m.div == "A"], cutoff, xi=0.0, ridge=1.0, teams=top)
+    joint = fit(out, cutoff, xi=0.0, ridge=1.0, divisions=["A", "B"])
+    pri = linked_priors(top_only, joint, ["P"])
+    ranked = sorted(top[:8], key=lambda t: strength[t])
+    # P's true strength (0.05) sits mid-table; its linked attack prior should land between
+    # the 2nd-weakest and 2nd-strongest established sides.
+    lo = top_only.attack[top_only.index(ranked[1])]
+    hi = top_only.attack[top_only.index(ranked[-2])]
+    assert lo < pri["P"][0] < hi

@@ -115,13 +115,16 @@ def prediction(lam: float, mu: float, rho: float) -> Prediction:
     return Prediction(lam, mu, rho, grid, tail)
 
 
-def _neg_ll(theta, hi, ai, x, y, w, n, ridge, a0, d0, fix_rho):
+def _neg_ll(theta, hi, ai, x, y, w, n, ridge, a0, d0, fix_rho, grp=None, G=1):
     c, h, rho = theta[0], theta[1], (0.0 if fix_rho else theta[2])
     af, df = theta[3:2 + n], theta[2 + n:1 + 2 * n]
     A = np.append(af, -af.sum())
     D = np.append(df, -df.sum())
-    loglam = c + h + A[hi] + D[ai]
-    logmu = c + A[ai] + D[hi]
+    # Optional per-division goal level (division 0 is the reference), for multi-division fits.
+    off = np.append(0.0, theta[1 + 2 * n:]) if G > 1 else None
+    level = off[grp] if G > 1 else 0.0
+    loglam = c + h + A[hi] + D[ai] + level
+    logmu = c + A[ai] + D[hi] + level
     lam, mu = np.exp(loglam), np.exp(logmu)
 
     m00 = (x == 0) & (y == 0)
@@ -167,17 +170,22 @@ def _neg_ll(theta, hi, ai, x, y, w, n, ridge, a0, d0, fix_rho):
     g[2] = 0.0 if fix_rho else -np.sum(w * dt_dr / t)
     g[3:2 + n] = gA[:-1] - gA[-1]
     g[2 + n:1 + 2 * n] = gD[:-1] - gD[-1]
+    if G > 1:
+        g[1 + 2 * n:] = -np.bincount(grp, gl + gm, G)[1:]
     return f, g
 
 
 def fit(matches, cutoff: date, xi: float = 0.002, ridge: float = 2.0, *,
         teams: list[str] | None = None, priors: dict[str, tuple[float, float]] | None = None,
-        fix_rho: bool = False, window_days: int = 1460, init: DCModel | None = None) -> DCModel:
+        fix_rho: bool = False, window_days: int = 1460, init: DCModel | None = None,
+        divisions: list[str] | None = None) -> DCModel:
     """Fit on matches strictly before `cutoff`.
 
     `teams` may include teams with no matches in the window (e.g. promoted sides); their
     ratings are then set by the ridge prior. `priors` maps team -> (attack, defence) targets
     for the ridge penalty; other teams shrink towards the league average (0).
+    `divisions` fits several divisions jointly (e.g. ["E0", "E1"]): team ratings share one
+    scale, linked by teams that moved between divisions, and each division gets its own goal level.
     """
     train = [m for m in matches if m.played and m.date < cutoff and (cutoff - m.date).days <= window_days]
     if not train:
@@ -191,6 +199,8 @@ def fit(matches, cutoff: date, xi: float = 0.002, ridge: float = 2.0, *,
     y = np.array([m.ag for m in train], dtype=float)
     age = np.array([(cutoff - m.date).days for m in train], dtype=float)
     w = np.exp(-xi * age)
+    G = len(divisions) if divisions else 1
+    grp = np.array([divisions.index(m.div) for m in train]) if G > 1 else None
     priors = priors or {}
     a0 = np.array([priors.get(t, (0.0, 0.0))[0] for t in names])
     d0 = np.array([priors.get(t, (0.0, 0.0))[1] for t in names])
@@ -198,17 +208,18 @@ def fit(matches, cutoff: date, xi: float = 0.002, ridge: float = 2.0, *,
     a0 -= a0.mean()
     d0 -= d0.mean()
 
-    theta0 = np.zeros(1 + 2 * n)
+    theta0 = np.zeros(1 + 2 * n + (G - 1))
     theta0[0] = math.log(max(np.average((x + y) / 2, weights=w), 0.1))
     theta0[1] = 0.2
     theta0[2] = 0.0 if fix_rho else -0.05
-    if init is not None and init.teams == names and init.theta is not None:
+    if init is not None and init.teams == names and init.theta is not None and len(init.theta) == len(theta0):
         theta0 = init.theta.copy()
         if fix_rho:
             theta0[2] = 0.0
 
-    bounds = [(None, None), (None, None), (0.0, 0.0) if fix_rho else RHO_BOUNDS] + [(None, None)] * (2 * (n - 1))
-    res = minimize(_neg_ll, theta0, args=(hi, ai, x, y, w, n, ridge, a0, d0, fix_rho),
+    bounds = ([(None, None), (None, None), (0.0, 0.0) if fix_rho else RHO_BOUNDS]
+              + [(None, None)] * (2 * (n - 1)) + [(None, None)] * (G - 1))
+    res = minimize(_neg_ll, theta0, args=(hi, ai, x, y, w, n, ridge, a0, d0, fix_rho, grp, G),
                    jac=True, method="L-BFGS-B", bounds=bounds, options={"maxiter": 2000})
     th = res.x
     af, df = th[3:2 + n], th[2 + n:1 + 2 * n]
@@ -232,3 +243,15 @@ def promoted_priors(model: DCModel, relegated: list[str], promoted: list[str]) -
     a = float(np.mean([model.attack[model.index(t)] for t in rel]))
     d = float(np.mean([model.defence[model.index(t)] for t in rel]))
     return {t: (a, d) for t in promoted}
+
+
+def linked_priors(top: DCModel, joint: DCModel, promoted: list[str]) -> dict[str, tuple[float, float]]:
+    """Promoted sides' ratings from a joint top+second-division fit, moved onto the top-division
+    model's scale using the teams both models share."""
+    shared = [t for t in top.teams if t in joint.teams and t not in promoted]
+    if not shared:
+        return {}
+    da = np.mean([top.attack[top.index(t)] - joint.attack[joint.index(t)] for t in shared])
+    dd = np.mean([top.defence[top.index(t)] - joint.defence[joint.index(t)] for t in shared])
+    return {t: (float(joint.attack[joint.index(t)] + da), float(joint.defence[joint.index(t)] + dd))
+            for t in promoted if t in joint.teams}

@@ -17,7 +17,7 @@ import numpy as np
 
 from .data import LEAGUES, ROOT, SEASONS, Match, load_results
 from .blend import blended_prediction, tune_weights
-from .model import DCModel, fit, prediction, promoted_priors
+from .model import DCModel, fit, linked_priors, prediction, promoted_priors
 
 VALIDATION = ["2324"]
 TEST = ["2425", "2526"]
@@ -39,7 +39,11 @@ def season_teams(matches: list[Match], season: str) -> set[str]:
     return {t for m in matches if m.season == season for t in (m.home, m.away)}
 
 
-def preseason_priors(matches, season, xi, ridge, extra_teams=()):
+# Second divisions whose data can rate teams promoted into a top division.
+FEEDERS = {"E0": "E1"}
+
+
+def preseason_priors(matches, season, xi, ridge, extra_teams=(), feeder=None):
     """Teams in the league this season, rating priors for promoted sides, and the
     low-score correction rho estimated from goals before the season."""
     i = SEASONS.index(season)
@@ -48,8 +52,16 @@ def preseason_priors(matches, season, xi, ridge, extra_teams=()):
     if i == 0 or not in_season:
         return sorted(teams), {}, None
     prev = season_teams(matches, SEASONS[i - 1])
-    base = fit(matches, min(in_season), xi, ridge)
-    return sorted(teams), promoted_priors(base, sorted(prev - teams), sorted(teams - prev)), base.rho
+    start = min(in_season)
+    base = fit(matches, start, xi, ridge)
+    promoted = sorted(teams - prev)
+    priors = promoted_priors(base, sorted(prev - teams), promoted)
+    if feeder and promoted:
+        # Rate promoted sides from a joint top + second division fit instead of the
+        # relegated-sides average (falls back to that for any team the joint fit lacks).
+        joint = fit(matches + feeder, start, xi, ridge, divisions=[matches[0].div, feeder[0].div])
+        priors.update(linked_priors(base, joint, promoted))
+    return sorted(teams), priors, base.rho
 
 
 def shot_mixed(matches, alpha, cutoff):
@@ -85,9 +97,9 @@ def _baseline(matches, cutoff):
     return (h, d, 1 - h - d), o25, btts
 
 
-def replay(matches, season, xi, ridge, *, alpha=1.0, fix_rho=False, with_baseline=False, extra_teams=()):
+def replay(matches, season, xi, ridge, *, alpha=1.0, fix_rho=False, with_baseline=False, extra_teams=(), feeder=None):
     """Yield (match, prediction, model, baseline) for every played match in `season`."""
-    teams, priors, rho = preseason_priors(matches, season, xi, ridge, extra_teams)
+    teams, priors, rho = preseason_priors(matches, season, xi, ridge, extra_teams, feeder)
     played = [m for m in matches if m.season == season and m.played]
     # Goals-per-shot ratio from before the season starts, so no in-season information leaks.
     mixed = shot_mixed(matches, alpha, played[0].date) if played else matches
@@ -319,6 +331,10 @@ def run(out_dir: Path, log=print) -> dict:
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
     log("Evaluating on held-out test seasons…")
     res = evaluate(data, cfg, log)
+    log("Testing second-division links for promoted teams…")
+    res["link_test"] = link_experiment(data, cfg, log)
+    cfg["link"] = {top: r["adopt"] for top, r in res["link_test"].items()}
+    CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
     res["config"] = cfg
     res["configs_tried"] = tried
     res["block_days"] = BLOCK_DAYS
@@ -327,3 +343,34 @@ def run(out_dir: Path, log=print) -> dict:
     (out_dir / "accuracy.json").write_text(json.dumps(res, indent=1))
     log(f"Done in {res['runtime_s']}s. Status: {res['status']}")
     return res
+
+
+def link_experiment(data, cfg, log=print) -> dict:
+    """Does rating promoted sides from the second division beat the relegated-average prior?
+    Compared on the top division only, chosen on validation and confirmed on test seasons."""
+    out = {}
+    for top, second in FEEDERS.items():
+        if top not in data or second not in data:
+            continue
+        res = {}
+        for label, seasons in (("validation", VALIDATION), ("test", TEST)):
+            rows = {"base": [], "linked": []}
+            for season in seasons:
+                prev = season_teams(data[top], SEASONS[SEASONS.index(season) - 1])
+                for key, feeder in (("base", None), ("linked", data[second])):
+                    for m, p, _, _ in replay(data[top], season, cfg["xi"], cfg["ridge"], alpha=cfg["alpha"], feeder=feeder):
+                        r = record(m, p)
+                        r["promoted_game"] = m.home not in prev or m.away not in prev
+                        rows[key].append(r)
+            promoted_rows = {k: [r for r in v if r["promoted_game"]] for k, v in rows.items()}
+            ll = lambda rs: [ll_1x2(r["p"], r["outcome"]) for r in rs]
+            res[label] = {
+                "all": bootstrap_diff(ll(rows["linked"]), ll(rows["base"])),
+                "promoted_matches": bootstrap_diff(ll(promoted_rows["linked"]), ll(promoted_rows["base"])),
+                "n": len(rows["base"]), "n_promoted": len(promoted_rows["base"]),
+            }
+            log(f"  {top}<-{second} {label}: log loss change {res[label]['all']['mean']:+.4f} "
+                f"(promoted-team matches {res[label]['promoted_matches']['mean']:+.4f}, n={res[label]['n_promoted']})")
+        res["adopt"] = res["validation"]["all"]["mean"] < 0 and res["test"]["all"]["mean"] <= 0
+        out[top] = res
+    return out

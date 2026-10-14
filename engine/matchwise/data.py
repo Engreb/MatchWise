@@ -23,6 +23,10 @@ LEAGUES = {
     "I1": ("seriea", "Serie A"),
     "D1": ("bundesliga", "Bundesliga"),
     "F1": ("ligue1", "Ligue 1"),
+    "E1": ("championship", "Championship"),
+    "SC0": ("scotland", "Scottish Premiership"),
+    "N1": ("eredivisie", "Eredivisie"),
+    "P1": ("portugal", "Primeira Liga"),
 }
 SEASONS = ["2021", "2122", "2223", "2324", "2425", "2526", "2627"]
 CURRENT_SEASON = SEASONS[-1]
@@ -31,7 +35,8 @@ RESULTS_URL = "https://www.football-data.co.uk/mmz4281/{season}/{div}.csv"
 FIXTURES_URL = "https://www.football-data.co.uk/fixtures.csv"
 # Full-season schedules (football-data only lists the next few days' fixtures).
 SCHEDULE_URL = "https://fixturedownload.com/feed/json/{slug}-20{yy}"
-SCHEDULE_SLUGS = {"E0": "epl", "SP1": "la-liga", "I1": "serie-a", "D1": "bundesliga", "F1": "ligue-1"}
+SCHEDULE_SLUGS = {"E0": "epl", "SP1": "la-liga", "I1": "serie-a", "D1": "bundesliga", "F1": "ligue-1",
+                  "E1": "championship", "SC0": "scottish-premiership", "N1": "eredivisie", "P1": "primeira-liga"}
 
 
 @dataclass

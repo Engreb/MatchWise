@@ -18,9 +18,11 @@ from pathlib import Path
 from .data import ROOT, implied  # importing data also applies the IPv4-first network fix
 
 SPORT_KEYS = {"E0": "soccer_epl", "SP1": "soccer_spain_la_liga", "I1": "soccer_italy_serie_a",
-              "D1": "soccer_germany_bundesliga", "F1": "soccer_france_ligue_one"}
+              "D1": "soccer_germany_bundesliga", "F1": "soccer_france_ligue_one", "E1": "soccer_efl_champ"}
+# Leagues fetched live; others use football-data.co.uk pre-match odds to stay within free credits.
+LIVE_DIVS = set(SPORT_KEYS)
 BASE = "https://api.the-odds-api.com/v4/sports/{sport}/odds"
-ODDS_HOURS = 72
+ODDS_HOURS = 48
 MIN_REMAINING = 20
 SHOW_BOOKS = {"skybet": "Sky Bet", "coral": "Coral"}
 ARCHIVE_DIR = ROOT / "data" / "odds"

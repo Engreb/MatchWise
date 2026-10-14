@@ -574,7 +574,8 @@ async function accuracyPage(meta) {
       <li>Each test season was replayed week by week. Before every week the model was refitted using only results from before that week.</li>
       <li>Settings were chosen on ${A.validation_seasons.join(', ')} only (${A.configs_tried.length} combinations tried); the test seasons were never used for tuning.</li>
       <li>Bookmaker comparisons use average odds across bookmakers with the margin removed.</li>
-      <li>Promoted teams start from the average rating of the teams they replaced.</li>
+      <li>Promoted teams start from the average rating of the teams they replaced.${A.link_test && A.link_test.E0 ? ` Rating Premier League newcomers from their Championship results instead was tested and ${A.link_test.E0.adopt ? 'adopted' : 'not adopted: it was no better'} (log loss change ${A.link_test.E0.test.all.mean >= 0 ? '+' : ''}${A.link_test.E0.test.all.mean.toFixed(4)} on the test seasons).` : ''}</li>
+      <li>Accuracy differs by league: more even leagues such as the Championship are harder for everyone, bookmakers included.</li>
     </ul></div></details>
   </div>`;
 }

@@ -127,6 +127,34 @@ ALIASES.update({
 })
 
 
+# Championship, Scottish Premiership, Eredivisie and Primeira Liga (schedule + odds spellings).
+ALIASES.update({
+    # Championship
+    "Birmingham City": "Birmingham", "Blackburn Rovers": "Blackburn", "Bolton Wanderers": "Bolton",
+    "Charlton Athletic": "Charlton", "Derby County": "Derby", "Lincoln City": "Lincoln",
+    "Preston North End": "Preston", "Queens Park Rangers": "QPR", "West Bromwich Albion": "West Brom",
+    "Wrexham AFC": "Wrexham", "Sheffield Wednesday": "Sheffield Weds", "Oxford United": "Oxford",
+    "Plymouth Argyle": "Plymouth", "Hull City": "Hull", "Coventry City": "Coventry",
+    # Scottish Premiership
+    "Heart of Midlothian": "Hearts", "St. Johnstone": "St Johnstone", "St. Mirren": "St Mirren",
+    "Ross County": "Ross County", "Dundee FC": "Dundee", "Livingston": "Livingston",
+    # Eredivisie
+    "ADO Den Haag": "Den Haag", "AZ": "AZ Alkmaar", "Excelsior Rotterdam": "Excelsior", "FC Groningen": "Groningen",
+    "FC Twente": "Twente", "FC Utrecht": "Utrecht", "Fortuna Sittard": "For Sittard", "N.E.C. Nijmegen": "Nijmegen",
+    "NEC Nijmegen": "Nijmegen", "PEC Zwolle": "Zwolle", "PSV": "PSV Eindhoven", "SC Cambuur": "Cambuur",
+    "sc Heerenveen": "Heerenveen", "SC Heerenveen": "Heerenveen", "NAC Breda": "Breda", "Heracles Almelo": "Heracles",
+    "Willem II Tilburg": "Willem II", "FC Volendam": "Volendam", "Almere City FC": "Almere City",
+    # Primeira Liga
+    "Académico": "Academico Viseu", "CD Nacional": "Nacional", "Casa Pia AC": "Casa Pia",
+    "Estoril Praia": "Estoril", "Estrela Amadora": "Estrela", "FC Alverca": "Alverca", "FC Arouca": "Arouca",
+    "FC Famalicão": "Famalicao", "FC Porto": "Porto", "Gil Vicente FC": "Gil Vicente", "Marítimo M.": "Maritimo",
+    "Moreirense FC": "Moreirense", "Rio Ave FC": "Rio Ave", "SC Braga": "Sp Braga", "SL Benfica": "Benfica",
+    "Sporting CP": "Sp Lisbon", "Vitória SC": "Guimaraes", "Sporting Lisbon": "Sp Lisbon", "Braga": "Sp Braga",
+    "Vitoria Guimaraes": "Guimaraes", "Famalicao": "Famalicao", "CF Estrela": "Estrela", "AVS Futebol SAD": "AVS",
+    "Boavista Porto": "Boavista", "Farense": "Farense",
+})
+
+
 def canonical(name: str, known: set[str]) -> str | None:
     """football-data.co.uk name for a fixturedownload.com name, or None if unknown."""
     name = name.strip()
