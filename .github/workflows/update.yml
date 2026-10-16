@@ -4,12 +4,14 @@ name: Update predictions
 
 on:
   schedule:
-    - cron: "0 6 * * *"    # 06:00 UTC daily
-    # Extra runs close to weekend kick-offs, for fresher odds (about 350 of 500 free credits a month).
-    - cron: "0 15 * * 5"   # Friday 15:00 UTC
-    - cron: "30 9 * * 6"   # Saturday 09:30 UTC
-    - cron: "0 13 * * 6"   # Saturday 13:00 UTC
-    - cron: "0 10 * * 0"   # Sunday 10:00 UTC
+    # GitHub often starts scheduled runs 3-4 hours late (worst on the hour), so these are early
+    # and at odd minutes: even a late start should land before the matches it is meant to cover.
+    - cron: "17 5 * * *"   # daily, 05:17 UTC
+    # Extra runs before weekend kick-offs for fresher odds (about 350 of 500 free credits a month).
+    - cron: "47 10 * * 5"  # Friday 10:47 UTC (evening games)
+    - cron: "47 6 * * 6"   # Saturday 06:47 UTC (early and 3pm games)
+    - cron: "47 9 * * 6"   # Saturday 09:47 UTC (afternoon and evening games)
+    - cron: "47 7 * * 0"   # Sunday 07:47 UTC
   workflow_dispatch:
   push:
     branches: [main]

@@ -86,10 +86,16 @@ function indexTables(meta, T) {
 function fixtures(meta) {
   return meta.fixtures.map((f, i) => {
     const model = f.model ? parsePayload(f.model) : null;
-    return { ...f, id: i, lgName: LEAGUE_NAMES[f.league], model, pr: f.blend ? parsePayload(f.blend) : model };
+    let pr = f.blend ? parsePayload(f.blend) : model;
+    const saved = f.saved_adj || f.saved;
+    if (isStarted(f) && pr && saved) pr = { ...pr, H: saved[0], D: saved[1], A: saved[2] }; // exactly as saved before kick-off
+    return { ...f, id: i, lgName: LEAGUE_NAMES[f.league], model, pr };
   });
 }
-const upcoming = meta => fixtures(meta).filter(f => !hasTime(f.kickoff) || dt(f.kickoff) > Date.now() - 2 * 36e5);
+// Kicked off but no result published yet (kept for a few days by the engine).
+const isStarted = f => f.status === 'started' || (hasTime(f.kickoff) && dt(f.kickoff) <= Date.now());
+const upcoming = meta => fixtures(meta).filter(f => f.status === 'started' || !hasTime(f.kickoff) || dt(f.kickoff) > Date.now() - 2 * 36e5);
+const notStarted = meta => upcoming(meta).filter(f => !isStarted(f));
 const leagueOrder = meta => [...meta.leagues.map(l => l.key).filter(isFavLeague), ...meta.leagues.map(l => l.key).filter(k => !isFavLeague(k))];
 
 /* ---------- formatting ---------- */
@@ -247,13 +253,16 @@ function fixtureCard(f, showLeague = true) {
     return `<div class="card fx"><div class="fx-top"><span class="num">${cc(f.league)} ${fmtTime(f.kickoff)}${showLeague ? ' · ' + esc(f.lgName) : ''}</span><span class="pill">Unable to assess</span></div>
       <div class="team">${crest(f.home)}<span class="nm">${esc(f.home)}</span></div><div class="team">${crest(f.away)}<span class="nm">${esc(f.away)}</span></div></div>`;
   }
-  const p = f.pr, probs = [p.H, p.D, p.A], v = verdict(p);
+  const p = f.pr, probs = [p.H, p.D, p.A], v = verdict(p), started = isStarted(f);
+  if (started) { v.label = 'Awaiting result'; v.cls = 'warn'; }
   return `<a class="card fx" href="${matchHref(f.league, f.home, f.away)}" aria-label="${esc(f.home)} versus ${esc(f.away)}: ${pct(p.H)} home, ${pct(p.D)} draw, ${pct(p.A)} away">
     <div class="fx-top"><span class="num">${cc(f.league)} ${fmtTime(f.kickoff)}${showLeague ? ' · ' + esc(f.lgName) : ''}</span><span class="pill ${v.cls}">${v.label}</span></div>
     <div class="team">${crest(f.home)}<span class="nm ${v.k === 0 ? 'fav' : ''}">${esc(f.home)}</span>${star(f.home)}${formHtml(f.home)}</div>
     <div class="team">${crest(f.away)}<span class="nm ${v.k === 2 ? 'fav' : ''}">${esc(f.away)}</span>${star(f.away)}${formHtml(f.away)}</div>
     ${pbar(probs, v.k)}${probsRow(probs, v.k)}
-    <div class="fx-foot num"><span>Expected goals <b>${p.lam.toFixed(1)}–${p.mu.toFixed(1)}</b> · Likely <b>${p.top[0][0]}–${p.top[0][1]}</b></span><span>${f.blend ? 'Odds-adjusted' : 'Model'}</span></div>
+    <div class="fx-foot num">${started
+      ? `<span>Kicked off ${fmtTime(f.kickoff)} · prediction saved ${f.saved_at ? fmtShort(f.saved_at) + ' ' + fmtTime(f.saved_at) : 'before kick-off'}</span>`
+      : `<span>Expected goals <b>${p.lam.toFixed(1)}–${p.mu.toFixed(1)}</b> · Likely <b>${p.top[0][0]}–${p.top[0][1]}</b></span><span>${f.blend ? 'Odds-adjusted' : 'Model'}</span>`}</div>
   </a>`;
 }
 function compactRow(f) {
@@ -261,7 +270,7 @@ function compactRow(f) {
   const ps = [f.pr.H, f.pr.D, f.pr.A], k = topIdx(ps);
   const nm = (t, i) => `<div class="t ${k === i ? 'f' : ''}">${crest(t)}${esc(t)}${isFavTeam(f.league, t) ? ' ' + I.star : ''}</div>`;
   return `<a class="crow" href="${matchHref(f.league, f.home, f.away)}" aria-label="${esc(f.home)} versus ${esc(f.away)}: ${pct(ps[0])} home, ${pct(ps[1])} draw, ${pct(ps[2])} away">
-    <span class="small muted num">${fmtTime(f.kickoff)}</span><span style="min-width:0">${nm(f.home, 0)}${nm(f.away, 2)}</span>
+    <span class="small muted num">${isStarted(f) ? '<span class="pill warn" style="padding:1px 5px;font-size:10px">Started</span>' : fmtTime(f.kickoff)}</span><span style="min-width:0">${nm(f.home, 0)}${nm(f.away, 2)}</span>
     <span><div class="p3 num">${ps.map((x, i) => i === k ? `<b>${pct(x)}</b>` : `<span>${pct(x)}</span>`).join('')}</div><div class="mini" aria-hidden="true">${ps.map((x, i) => `<i class="${i === k ? 'on' : ''}" style="flex:${Math.max(x, .02)}"></i>`).join('')}</div></span></a>`;
 }
 
@@ -275,7 +284,7 @@ function weekendWindow(fx) {
   return inWin.length ? inWin : fx;
 }
 async function weekendPage(meta) {
-  const all = upcoming(meta).filter(f => f.pr);
+  const all = notStarted(meta).filter(f => f.pr);
   const fx = weekendWindow(all);
   const head = `${topbar()}<div class="page-head"><div><h1>This weekend</h1><p class="sub">${fx.length} matches across ${new Set(fx.map(f => f.league)).size} leagues${fx.length ? ` · ${fmtShort(fx[0].kickoff)} – ${fmtShort(fx[fx.length - 1].kickoff)}` : ''}</p></div>${statusPill(meta)}</div>`;
   if (!fx.length) return `<div class="content">${head}${staleNotice(meta)}<div class="card empty"><h3>No upcoming matches found</h3><p>You can still predict any match.</p><a class="btn primary" href="#/predict">Predict a match</a></div></div>`;
@@ -452,11 +461,14 @@ async function matchPage(meta, lgKey, home, away) {
   if (!LEAGUE_NAMES[lgKey]) return `<div class="content">${back}<div class="card empty"><h3>Unknown league</h3></div></div>`;
   const L = await league(lgKey);
   const fx = meta.fixtures.find(f => f.league === lgKey && f.home === home && f.away === away);
-  const modelP = fx && fx.model ? parsePayload(fx.model) : await pairFor(lgKey, home, away);
+  const started = !!(fx && isStarted(fx));
+  let modelP = fx && fx.model ? parsePayload(fx.model) : await pairFor(lgKey, home, away);
+  if (started && modelP && fx.saved) modelP = { ...modelP, H: fx.saved[0], D: fx.saved[1], A: fx.saved[2] };
   if (!modelP) return `<div class="content">${back}<div class="card empty"><h3>Unable to assess this match</h3><p>One of the teams isn't in the current ${esc(L.name)} model.</p></div></div>`;
-  const canBlend = !!(fx && fx.blend);
+  const canBlend = !!(fx && (fx.blend || (started && fx.saved_adj)));
   const blended = canBlend && state.view === 'blend';
-  const p = blended ? parsePayload(fx.blend) : modelP;
+  let p = blended && fx.blend ? parsePayload(fx.blend) : modelP;
+  if (blended && started && fx.saved_adj) p = { ...p, H: fx.saved_adj[0], D: fx.saved_adj[1], A: fx.saved_adj[2] };
   const T = Object.fromEntries(L.teams.map(t => [t.name, t]));
   const th = T[home], ta = T[away], n = L.teams.length;
   const probs = [p.H, p.D, p.A], v = verdict(p);
@@ -486,7 +498,7 @@ async function matchPage(meta, lgKey, home, away) {
 
   // Odds: better of Sky Bet / Coral highlighted, with model vs bookmaker bars.
   let odds = '';
-  if (fx && fx.market) {
+  if (fx && fx.market && !started) {
     const mm = [modelP.H, modelP.D, modelP.A], lbl = [home, 'Draw', away];
     const books = [['Sky Bet', fx.odds_skybet], ['Coral', fx.odds_coral]].filter(([, o]) => o);
     const src = fx.odds_source === 'The Odds API'
@@ -510,12 +522,13 @@ async function matchPage(meta, lgKey, home, away) {
   const cd = fx ? countdownText(fx.kickoff) : '';
   const side = t => `<a class="side" href="${teamHref(lgKey, t)}" style="color:inherit">${crest(t, 'lg')}<span class="nm">${esc(t)}</span>${formHtml(t)}</a>`;
 
+  const startedNote = started ? `<div class="notice" role="status">Kicked off ${fmtShort(fx.kickoff)} ${fmtTime(fx.kickoff)}. This is the prediction saved before kick-off${fx.saved_at ? ` (${fmtShort(fx.saved_at)} ${fmtTime(fx.saved_at)})` : ''}. The result will appear under This season once it's published, usually within a day or two.</div>` : '';
   return `<div class="content">
-    ${back}
+    ${back}${startedNote}
     <div class="card hero">
       <div class="meta">${cc(lgKey)} ${esc(L.name)} · ${fx ? `${fmtDay(fx.kickoff)} · ${fmtTime(fx.kickoff)}` : 'Custom matchup'}</div>
       <div class="vs">${side(home)}<div class="mid">vs</div>${side(away)}</div>
-      <span class="pill accent">${v.label}${cd ? ' · ' + cd : ''}</span>
+      <span class="pill ${started ? 'warn' : 'accent'}">${started ? 'Awaiting result' : v.label + (cd ? ' · ' + cd : '')}</span>
       <div class="big3 num">${[[home + ' win', p.H], ['Draw', p.D], [away + ' win', p.A]].map(([l, val], i) => `<div class="${i === v.k ? 'top' : ''}"><b>${pct(val)}</b><span>${esc(l)}</span><small>Fair odds ${fair(val)}</small></div>`).join('')}</div>
       ${pbar(probs, v.k)}
     </div>

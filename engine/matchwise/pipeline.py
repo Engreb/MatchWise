@@ -21,6 +21,7 @@ MODEL_VERSION = "dc-0.1"
 LIMITED_WEIGHT = 8.0  # effective (time-weighted) matches below which a rating is flagged
 GRID_N = 6
 FIXTURE_DAYS = 10
+STARTED_DAYS = 5  # how long a kicked-off match without a result stays listed
 R = 4  # decimal places in output
 
 
@@ -89,17 +90,28 @@ def _snapshot_index(snapshot_dir: Path | None = None) -> dict:
     return idx
 
 
-def upcoming_fixtures(div: str, teams: list[str], odds_rows: list[Match], now: datetime, log=print) -> list[dict]:
-    """Matches not yet kicked off in the next FIXTURE_DAYS days (or the league's next round if
-    none fall in that window), from the full schedule, with odds attached where published."""
+def upcoming_fixtures(div: str, teams: list[str], odds_rows: list[Match], now: datetime, log=print,
+                      results: set | None = None) -> list[dict]:
+    """Matches in the next FIXTURE_DAYS days (or the league's next round if none fall in that
+    window), from the full schedule, with odds attached where published. Matches that kicked off
+    in the last STARTED_DAYS days but have no result in `results` yet are kept, marked `started`,
+    so they stay visible until the score arrives."""
     known = set(teams)
+    results = results or set()
     odds = {(m.home, m.away): m for m in odds_rows}
-    sched = [s for s in load_schedule(div) if s["kickoff_utc"] > now]
-    if sched:
-        end = max(now + timedelta(days=FIXTURE_DAYS), sched[0]["kickoff_utc"] + timedelta(days=3))
-        sched = [s for s in sched if s["kickoff_utc"] <= end]
+
+    def has_result(s):
+        h, a = canonical(s["home"], known), canonical(s["away"], known)
+        return (s["date"], h, a) in results
+
+    allsched = [s for s in load_schedule(div, include_played=True) if not has_result(s)]
+    future = [s for s in allsched if s["kickoff_utc"] > now]
+    started = [{**s, "started": True} for s in allsched if now - timedelta(days=STARTED_DAYS) <= s["kickoff_utc"] <= now]
+    if future:
+        end = max(now + timedelta(days=FIXTURE_DAYS), future[0]["kickoff_utc"] + timedelta(days=3))
+        future = [s for s in future if s["kickoff_utc"] <= end]
     out, seen = [], set()
-    for s in sched:
+    for s in started + future:
         h, a = canonical(s["home"], known), canonical(s["away"], known)
         for raw, mapped in ((s["home"], h), (s["away"], a)):
             if mapped is None:
@@ -110,9 +122,24 @@ def upcoming_fixtures(div: str, teams: list[str], odds_rows: list[Match], now: d
         out.append(f)
     # Fall back to football-data's own fixture list for anything the schedule lacks.
     for m in odds_rows:
-        if (m.home, m.away) not in seen and (m.kickoff_utc is None or m.kickoff_utc > now):
+        if (m.home, m.away) not in seen and (m.kickoff_utc is None or m.kickoff_utc > now)                 and (m.date, m.home, m.away) not in results:
             out.append({"home": m.home, "away": m.away, "kickoff_utc": m.kickoff_utc, "date": m.date, "odds": m})
     return out
+
+
+def started_row(f: dict, key: str, div: str, ok: bool, pairs: dict, snaps: dict) -> dict:
+    """A match that has kicked off but has no result yet. It shows the last prediction saved
+    before kick-off; in-play odds are never used."""
+    date_s = f["date"].isoformat()
+    s = snaps.get((div, date_s, f["home"], f["away"])) or {}
+    model = s.get("mp") or (pairs.get(f"{f['home']}|{f['away']}") if ok else None)
+    return {"league": key, "div": div, "date": date_s, "kickoff": _iso(f["kickoff_utc"], f["date"]),
+            "round": f.get("round"), "home": f["home"], "away": f["away"], "assessable": ok,
+            "status": "started", "saved_at": s.get("saved_at"),
+            "saved": [s["H"], s["D"], s["A"]] if s else None,
+            "saved_adj": [s["bH"], s["bD"], s["bA"]] if "bH" in s else None,
+            "market": s.get("market"), "odds_source": s.get("odds_source"),
+            "model": model, "blend": s.get("bp")}
 
 
 def saved_extras(s: dict) -> dict:
@@ -169,15 +196,19 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
         leagues_meta.append({"key": key, "name": name, "data_through": last.isoformat(),
                              "matches_this_season": len(cur), "teams": len(teams)})
 
-        upcoming = upcoming_fixtures(div, teams, fx, now, log)
+        upcoming = upcoming_fixtures(div, teams, fx, now, log, results={(m.date, m.home, m.away) for m in cur})
         live = {}
-        soon = any(f["kickoff_utc"] and (f["kickoff_utc"] - now).total_seconds() <= odds_api.ODDS_HOURS * 3600 for f in upcoming)
+        soon = any(f["kickoff_utc"] and not f.get("started") and (f["kickoff_utc"] - now).total_seconds() <= odds_api.ODDS_HOURS * 3600 for f in upcoming)
         if odds_key and soon and div in odds_api.LIVE_DIVS:
             live = odds_api.fixture_odds(div, set(teams), odds_key, budget, canonical, log)
             odds_snap.update({(div, h, a): v for (h, a), v in live.items()})
 
         for f in upcoming:
             ok = f["home"] in teams and f["away"] in teams
+            if f.get("started"):
+                # Kicked off, result not in yet: show the prediction saved before kick-off, frozen.
+                fixture_rows.append(started_row(f, key, div, ok, pairs, snaps))
+                continue
             fd, lv = f["odds"], live.get((f["home"], f["away"]))
             # Prefer the fresher The Odds API prices; fall back to football-data's pre-match odds.
             if lv:
@@ -205,6 +236,10 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
                         "away": f["away"], "H": pr[2], "D": pr[3], "A": pr[4], "o25": pr[7],
                         "btts": pr[10], "lam": pr[0], "mu": pr[1],
                         "model": MODEL_VERSION, "cutoff": cutoff.isoformat()}
+                if f["kickoff_utc"] and (f["kickoff_utc"] - now) <= timedelta(hours=48):
+                    snap["mp"] = row["model"]  # full payloads so the match page can show it after kick-off
+                    if row["blend"]:
+                        snap["bp"] = row["blend"]
                 if row["blend"]:  # the odds-adjusted prediction the app showed, and the odds behind it
                     bp = row["blend"]
                     snap.update({"bH": bp[2], "bD": bp[3], "bA": bp[4], "bo25": bp[7], "bbtts": bp[10],
