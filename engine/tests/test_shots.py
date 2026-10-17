@@ -22,3 +22,12 @@ def test_mix_uses_goals_per_shot_from_before_cutoff_only():
     assert out[0].hg == pytest.approx(0.5 * 3 + 0.5 * (1 / 3) * 8)
     assert out[0].ag == pytest.approx(0.5 * 1 + 0.5 * (1 / 3) * 4)
     assert past.hg == 3  # originals untouched
+
+
+def test_xg_mix_uses_ratios_from_before_cutoff_and_falls_back_without_xg():
+    from matchwise.backtest import mix_targets
+    a = _m(date(2024, 1, 1), 2, 0, 6, 2); a.hxg, a.axg = 1.5, 0.5   # 2 goals / 2.0 xG -> kx = 1
+    b = _m(date(2024, 2, 1), 1, 1, 4, 4)                              # no xG: goals + shots only
+    out = mix_targets([a, b], (0.5, 0.0, 0.5), date(2024, 3, 1))
+    assert out[0].hg == pytest.approx(0.5 * 2 + 0.5 * 1.5) and out[0].ag == pytest.approx(0.25)
+    assert out[1].hg == 1 and out[1].ag == 1  # nothing to mix with, so goals unchanged

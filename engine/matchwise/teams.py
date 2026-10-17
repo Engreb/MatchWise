@@ -155,6 +155,16 @@ ALIASES.update({
 })
 
 
+# Understat spellings (xG history for the top five leagues).
+ALIASES.update({
+    "Real Valladolid": "Valladolid", "SD Huesca": "Huesca", "Parma Calcio 1913": "Parma",
+    "Arminia Bielefeld": "Bielefeld", "Borussia M.Gladbach": "M'gladbach", "FC Cologne": "FC Koln",
+    "FC Heidenheim": "Heidenheim", "Greuther Fuerth": "Greuther Furth", "Hertha Berlin": "Hertha",
+    "RasenBallsport Leipzig": "RB Leipzig", "St. Pauli": "St Pauli", "Clermont Foot": "Clermont",
+    "Saint-Etienne": "St Etienne",
+})
+
+
 def canonical(name: str, known: set[str]) -> str | None:
     """football-data.co.uk name for a fixturedownload.com name, or None if unknown."""
     name = name.strip()

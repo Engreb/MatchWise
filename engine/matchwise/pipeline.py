@@ -6,8 +6,9 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
+from scipy.stats import poisson
 
-from .backtest import FEEDERS, fit_current, load_config, preseason_priors, record, replay, summarize_1x2
+from .backtest import FEEDERS, fit_current, mix_for, load_config, preseason_priors, record, replay, summarize_1x2
 from .blend import blended_prediction
 from .data import CURRENT_SEASON, LEAGUES, ROOT, Match, load_fixtures, load_results, load_schedule
 from .model import DCModel, fit
@@ -126,6 +127,26 @@ def upcoming_fixtures(div: str, teams: list[str], odds_rows: list[Match], now: d
         if (m.home, m.away) not in seen and (m.kickoff_utc is None or m.kickoff_utc > now)                 and (m.date, m.home, m.away) not in results:
             out.append({"home": m.home, "away": m.away, "kickoff_utc": m.kickoff_utc, "date": m.date, "odds": m})
     return out
+
+
+def xg_table(results) -> dict:
+    """This season's xG for and against per team, and 'expected points': the points a side would
+    average given the chances each match produced (independent Poisson on the two xG values)."""
+    goals = np.arange(11)
+    out: dict[str, dict] = {}
+    for m in results:
+        if m.hxg is None or m.axg is None:
+            continue
+        g = np.outer(poisson.pmf(goals, m.hxg), poisson.pmf(goals, m.axg))
+        ph, pd_, pa = float(np.tril(g, -1).sum()), float(np.trace(g)), float(np.triu(g, 1).sum())
+        for t, f, a, xp in ((m.home, m.hxg, m.axg, 3 * ph + pd_), (m.away, m.axg, m.hxg, 3 * pa + pd_)):
+            r = out.setdefault(t, {"n": 0, "xgf": 0.0, "xga": 0.0, "xpts": 0.0})
+            r["n"] += 1
+            r["xgf"] += f
+            r["xga"] += a
+            r["xpts"] += xp
+    return {t: {"n": r["n"], "xgf": round(r["xgf"], 2), "xga": round(r["xga"], 2), "xpts": round(r["xpts"], 1)}
+            for t, r in out.items()}
 
 
 def started_row(f: dict, key: str, div: str, ok: bool, pairs: dict, snaps: dict) -> dict:
@@ -282,7 +303,7 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             for t in teams:
                 trend[t].append(_r(strength(mdl, t)) if t in mdl.teams else None)
 
-        for m, p, mdl, _ in replay(matches, CURRENT_SEASON, cfg["xi"], cfg["ridge"], alpha=cfg.get("alpha", 1.0), feeder=feeder):
+        for m, p, mdl, _ in replay(matches, CURRENT_SEASON, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), feeder=feeder):
             if not trend_dates or trend_dates[-1] != mdl.cutoff.isoformat():
                 add_trend(mdl)  # one point per weekly refit: how each team's rating moved this season
             r = record(m, p)
@@ -317,7 +338,7 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             for t, gf, ga in ((m.home, m.hg, m.ag), (m.away, m.ag, m.hg)):
                 if t in form:
                     form[t].append("W" if gf > ga else "D" if gf == ga else "L")
-        tables[key] = {"name": name, **proj, "form": {t: v[-5:] for t, v in form.items()},
+        tables[key] = {"name": name, **proj, "form": {t: v[-5:] for t, v in form.items()}, "xg": xg_table(cur),
                        "trend": {"dates": trend_dates, "teams": trend}}
         log(f"    table: {len(cur)} results, {len(remaining)} games left simulated")
 

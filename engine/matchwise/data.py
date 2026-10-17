@@ -8,7 +8,7 @@ import socket
 import time
 import urllib.request
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -51,6 +51,8 @@ class Match:
     ag: int | None = None
     hst: int | None = None  # shots on target
     ast: int | None = None
+    hxg: float | None = None  # expected goals (football-data this season, Understat before)
+    axg: float | None = None
     # Margin-free implied probabilities from average bookmaker odds, when available.
     market_open: tuple[float, float, float] | None = None
     market_close: tuple[float, float, float] | None = None
@@ -58,6 +60,8 @@ class Match:
     market_o25_open: float | None = None
     odds_avg: tuple[float, float, float] | None = None
     odds_skybet: tuple[float, float, float] | None = None
+    odds_max: tuple[float, float, float] | None = None  # best pre-match price across bookmakers
+    odds_b365: tuple[float, float, float] | None = None
     extra: dict = field(default_factory=dict)
 
     @property
@@ -102,6 +106,7 @@ def download(force_current: bool = True, log=print) -> None:
             path.write_bytes(_fetch(RESULTS_URL.format(season=season, div=div)))
     log("  downloading fixtures")
     (RAW_DIR / "fixtures.csv").write_bytes(_fetch(FIXTURES_URL))
+    download_understat(log)
     for div, slug in SCHEDULE_SLUGS.items():
         log(f"  downloading {slug} schedule")
         try:
@@ -192,8 +197,14 @@ def _row_to_match(row: dict, div: str, season: str, with_result: bool) -> Match 
     if o and u:
         m.market_o25_open = implied((o, u))[0]
     m.odds_skybet = _triple(row, ("SKBH", "SKBD", "SKBA"))
+    m.odds_max = _triple(row, ("MaxH", "MaxD", "MaxA"))
+    m.odds_b365 = _triple(row, ("B365H", "B365D", "B365A"))
     if row.get("HxG") and row.get("AxG"):
         m.extra["xg"] = (row["HxG"], row["AxG"])
+        try:
+            m.hxg, m.axg = float(row["HxG"]), float(row["AxG"])
+        except ValueError:
+            pass
     return m
 
 
@@ -208,7 +219,69 @@ def load_results(div: str) -> list[Match]:
             if m:
                 out.append(m)
     out.sort(key=lambda m: (m.date, m.kickoff_utc or datetime.min.replace(tzinfo=timezone.utc), m.home))
+    attach_understat_xg(div, out)
     return out
+
+
+# ---------- Understat xG history (top five leagues; football-data only has xG from 2026-27) ----------
+UNDERSTAT_LEAGUES = {"E0": "EPL", "SP1": "La_liga", "I1": "Serie_A", "D1": "Bundesliga", "F1": "Ligue_1"}
+UNDERSTAT_URL = "https://understat.com/getLeagueData/{league}/{year}"
+
+
+def download_understat(log=print) -> None:
+    """Fetch past seasons' match xG once (cached; past seasons never change)."""
+    import gzip
+    for div, league in UNDERSTAT_LEAGUES.items():
+        for season in SEASONS[:-1]:
+            path = RAW_DIR / f"understat_{season}_{div}.json"
+            if path.exists():
+                continue
+            year = "20" + season[:2]
+            req = urllib.request.Request(UNDERSTAT_URL.format(league=league, year=year), headers={
+                "User-Agent": "Mozilla/5.0", "X-Requested-With": "XMLHttpRequest",
+                "Referer": f"https://understat.com/league/{league}/{year}"})
+            try:
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    raw = r.read()
+                data = json.loads(gzip.decompress(raw) if raw[:2] == bytes([0x1F, 0x8B]) else raw)
+                rows = [{"h": x["h"]["title"], "a": x["a"]["title"], "dt": x["datetime"],
+                         "hxg": float(x["xG"]["h"]), "axg": float(x["xG"]["a"])}
+                        for x in data["dates"] if x.get("isResult") and x["xG"]["h"] is not None]
+                path.write_text(json.dumps(rows, separators=(",", ":")), encoding="utf-8")
+                log(f"  Understat xG {league} {year}: {len(rows)} matches")
+            except Exception as e:
+                log(f"  Understat xG {league} {year} unavailable ({type(e).__name__}); continuing without it")
+
+
+def attach_understat_xg(div: str, matches: list[Match], log=None) -> int:
+    """Copy Understat xG onto past-season matches that lack it. Names are mapped explicitly
+    (teams.py); an unmatched match simply has no xG and falls back to goals + shots."""
+    if div not in UNDERSTAT_LEAGUES:
+        return 0
+    from .teams import canonical
+    attached = 0
+    by_season: dict[str, dict] = {}
+    for m in matches:
+        by_season.setdefault(m.season, {})[(m.date, m.home, m.away)] = m
+    for season, idx in by_season.items():
+        path = RAW_DIR / f"understat_{season}_{div}.json"
+        if not path.exists():
+            continue
+        known = {t for (_, h, a) in idx for t in (h, a)}
+        for x in json.loads(path.read_text(encoding="utf-8")):
+            h, a = canonical(x["h"], known), canonical(x["a"], known)
+            if not h or not a:
+                continue
+            ko = datetime.strptime(x["dt"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            d0 = ko.astimezone(UK).date()
+            for d in (d0, d0 - timedelta(days=1), d0 + timedelta(days=1)):
+                m = idx.get((d, h, a))
+                if m is not None:
+                    if m.hxg is None:
+                        m.hxg, m.axg = x["hxg"], x["axg"]
+                        attached += 1
+                    break
+    return attached
 
 
 def load_schedule(div: str, include_played: bool = False) -> list[dict]:

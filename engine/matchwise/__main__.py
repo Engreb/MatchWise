@@ -2,14 +2,14 @@
 import argparse
 from pathlib import Path
 
-from . import backtest, data, pipeline
+from . import backtest, data, pipeline, strategies
 
 APP_DATA = Path(__file__).resolve().parents[2] / "app" / "data"
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="matchwise")
-    ap.add_argument("command", choices=["download", "backtest", "update", "all"],
+    ap.add_argument("command", choices=["download", "backtest", "update", "all", "strategies"],
                     help="download: fetch data · backtest: tune + validate (slow) · update: refresh predictions · all: everything")
     ap.add_argument("--offline", action="store_true", help="skip downloading; use cached files")
     args = ap.parse_args()
@@ -19,6 +19,8 @@ def main() -> None:
         data.download()
     if args.command in ("backtest", "all"):
         backtest.run(APP_DATA)
+    if args.command == "strategies":
+        strategies.run(APP_DATA)
     if args.command in ("update", "all"):
         print("Fitting current models…")
         pipeline.run(APP_DATA, offline=args.offline)

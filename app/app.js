@@ -376,20 +376,28 @@ async function tablesPage(meta, key) {
   const zc = r => r.pos <= z.top[2] ? 'var(--accent)' : (z.playoff && r.pos >= z.playoff[1] && r.pos <= z.playoff[2]) ? 'color-mix(in srgb, var(--accent) 45%, transparent)' : r.pos >= z.rel[1] ? 'var(--loss)' : 'transparent';
   const fav = r => isFavTeam(k, r.team);
   const name = r => `<span class="team" style="padding:0;gap:7px">${crest(r.team, 'sm')}<span class="tm" style="font-weight:${fav(r) ? 650 : 500}">${esc(r.team)}</span>${fav(r) ? I.star : ''}</span>`;
+  const xgv = state.tableView === 'xg' && T.xg && Object.keys(T.xg).length;
   const proj = state.tableView === 'proj';
-  const head = proj
+  const X = T.xg || {};
+  const luck = r => { const x = X[r.team]; return x ? r.pts - x.xpts : 0; };
+  const head = xgv
+    ? `<th>#</th><th style="text-align:left">Team</th><th class="r">Pts</th><th class="r">xPts</th><th class="r" title="Points minus expected points">+/−</th><th class="r">xG/g</th><th class="r">xGA/g</th>`
+    : proj
     ? `<th>#</th><th style="text-align:left">Team</th><th class="r">Pts</th><th class="r">Proj</th><th class="r">Title</th><th class="r">${esc(z.top[0])}</th>${z.playoff ? `<th class="r hide-m">${esc(z.playoff[0])}</th>` : ''}<th class="r">Rel</th>`
     : `<th>#</th><th style="text-align:left">Team</th><th class="r">P</th><th class="r hide-m">W</th><th class="r hide-m">D</th><th class="r hide-m">L</th><th class="r">GD</th><th class="r">Pts</th><th class="r hide-m">Form</th>`;
-  const body = rows.map(r => `<tr class="${fav(r) ? 'me' : ''}" data-href="${teamHref(k, r.team)}"><td class="pos num" style="--zc:${zc(r)}">${r.pos}</td><td><a href="${teamHref(k, r.team)}" style="color:inherit">${name(r)}</a></td>${proj
+  const body = rows.map(r => `<tr class="${fav(r) ? 'me' : ''}" data-href="${teamHref(k, r.team)}"><td class="pos num" style="--zc:${zc(r)}">${r.pos}</td><td><a href="${teamHref(k, r.team)}" style="color:inherit">${name(r)}</a></td>${xgv
+    ? (X[r.team] ? `<td class="r num" style="font-weight:650">${r.pts}</td><td class="r num">${X[r.team].xpts.toFixed(1)}</td><td class="r num" style="font-weight:600;color:${luck(r) >= 2 ? 'var(--win)' : luck(r) <= -2 ? 'var(--loss)' : 'var(--text-2)'}">${luck(r) > 0 ? '+' : ''}${luck(r).toFixed(1)}</td><td class="r num">${(X[r.team].xgf / X[r.team].n).toFixed(2)}</td><td class="r num">${(X[r.team].xga / X[r.team].n).toFixed(2)}</td>` : `<td class="r num">${r.pts}</td><td colspan="4" class="muted small">No xG data</td>`)
+    : proj
     ? `<td class="r num" style="font-weight:650">${r.pts}</td><td class="r num muted">${Math.round(r.xpts)}</td><td class="r">${heat(r.title, 'var(--accent)')}</td><td class="r">${heat(r.top, 'var(--accent)')}</td>${z.playoff ? `<td class="r hide-m">${heat(r.playoff, 'var(--accent)')}</td>` : ''}<td class="r">${heat(r.rel, 'var(--loss)')}</td>`
     : `<td class="r num">${r.p}</td><td class="r num hide-m">${r.w}</td><td class="r num hide-m">${r.d}</td><td class="r num hide-m">${r.l}</td><td class="r num">${r.gd > 0 ? '+' : ''}${r.gd}</td><td class="r num" style="font-weight:650">${r.pts}</td><td class="r hide-m">${formHtml(r.team)}</td>`}</tr>`).join('');
   return `<div class="content">${topbar()}<div class="page-head"><div><h1>Tables</h1><p class="sub">Live standings and how the season is likely to finish</p></div></div>
     <div class="hscroll" role="group" aria-label="Choose a league" style="margin-bottom:12px">${order.map(x => `<a class="lchip" href="#/tables/${x}" aria-pressed="${x === k}">${cc(x)}${isFavLeague(x) ? I.star : ''}${esc(LEAGUE_NAMES[x])}</a>`).join('')}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
-      <div class="seg" role="group" aria-label="Table view"><button data-tview="now" aria-pressed="${!proj}">Now</button><button data-tview="proj" aria-pressed="${proj}">Projected</button></div>
-      <span class="small muted">${proj ? `${T.sims.toLocaleString('en-GB')} simulated seasons` : `${T.rows.reduce((s, r) => s + r.p, 0) / 2} games played`}</span></div>
+      <div class="seg" role="group" aria-label="Table view"><button data-tview="now" aria-pressed="${!proj && !xgv}">Now</button><button data-tview="proj" aria-pressed="${proj}">Projected</button>${T.xg && Object.keys(T.xg).length ? `<button data-tview="xg" aria-pressed="${!!xgv}">xG</button>` : ''}</div>
+      <span class="small muted">${xgv ? 'This season · per game' : proj ? `${T.sims.toLocaleString('en-GB')} simulated seasons` : `${T.rows.reduce((s, r) => s + r.p, 0) / 2} games played`}</span></div>
     <div class="card" style="overflow-x:auto"><table class="tt"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     <div class="legend"><span><i style="background:var(--accent)"></i>${esc(z.top[0])}</span>${z.playoff ? `<span><i style="background:color-mix(in srgb, var(--accent) 45%, transparent)"></i>${esc(z.playoff[0])}</span>` : ''}<span><i style="background:var(--loss)"></i>${esc(z.rel[0])}</span>${proj ? '<span>Proj = projected final points</span>' : ''}</div>
+    ${xgv ? `<p class="small muted" style="margin:10px 2px 0">xG (expected goals) measures the quality of chances. xPts is the points a team would average from the chances each of its matches produced. <b style="color:var(--win)">Green</b> +/− means more points than the chances suggest (finishing well or lucky); <b style="color:var(--loss)">red</b> means fewer. Teams far from their xPts often drift back towards it.</p>` : ''}
     ${proj ? `<p class="small muted" style="margin:10px 2px 0">Each remaining fixture is simulated from the model's predictions, allowing for team strength to drift over the season. Ties are split by goal difference, then goals scored.${T.note ? ' ' + esc(T.note) : ''}</p>` : ''}
   </div>`;
 }
@@ -442,6 +450,7 @@ async function teamPage(meta, lg, team) {
     <div class="card card-pad" style="margin-top:12px"><h3>Where they'll finish</h3><p class="small muted" style="margin:2px 0 0">Chance of each final position from ${T.sims.toLocaleString('en-GB')} simulated seasons · projected ${Math.round(r.xpts)} points</p>${dist}
       <p class="small" style="margin:8px 0 0">Most likely: ${r.dist.map((v, i) => [i + 1, v]).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([pos, v]) => `<b>${ord(pos)}</b> <span class="muted">${pct(v)}</span>`).join(' · ')}</p></div>
     ${chart ? `<div class="card card-pad" style="margin-top:12px">${chart}</div>` : ''}
+    ${xgCard(lg, team, r)}
     ${tm ? `<div class="card card-pad" style="margin-top:12px"><h3 style="margin-bottom:6px">Ratings</h3>
       <div class="kv"><span>Attack</span><span>${ord(tm.rank_attack)} of ${n}</span></div><div class="kv"><span>Defence</span><span>${ord(tm.rank_defence)} of ${n}</span></div>
       <div class="kv"><span>Vs an average team</span><span class="num">${tm.strength > 0 ? '+' : ''}${tm.strength.toFixed(2)} goals</span></div></div>` : ''}
@@ -452,6 +461,19 @@ async function teamPage(meta, lg, team) {
     }).join('')}</div>` : ''}
     ${news}
   </div>`;
+}
+
+function xgCard(lg, team, r) {
+  const X = TABLES[lg]?.xg || {}, x = X[team];
+  if (!x || !x.n) return '';
+  const all = Object.entries(X).filter(([, v]) => v.n);
+  const rank = (f, desc) => 1 + all.filter(([, v]) => desc ? f(v) > f(x) : f(v) < f(x)).length;
+  const per = v => v / x.n, diff = r.pts - x.xpts;
+  return `<div class="card card-pad" style="margin-top:12px"><h3 style="margin-bottom:2px">Expected goals (xG)</h3><p class="small muted" style="margin:0 0 6px">Quality of chances created and conceded this season</p>
+    <div class="kv"><span>xG for</span><span class="num">${per(x.xgf).toFixed(2)} per game · ${ord(rank(v => v.xgf / v.n, true))} of ${all.length}</span></div>
+    <div class="kv"><span>xG against</span><span class="num">${per(x.xga).toFixed(2)} per game · ${ord(rank(v => v.xga / v.n, false))} of ${all.length}</span></div>
+    <div class="kv"><span>Points vs chances</span><span class="num" style="color:${diff >= 2 ? 'var(--win)' : diff <= -2 ? 'var(--loss)' : 'inherit'}">${r.pts} pts vs ${x.xpts.toFixed(1)} expected (${diff > 0 ? '+' : ''}${diff.toFixed(1)})</span></div>
+    <p class="small muted" style="margin:8px 0 0">${diff >= 2 ? 'More points than their chances suggest: good finishing or some luck, which often evens out.' : diff <= -2 ? 'Fewer points than their chances suggest: poor finishing or bad luck, which often evens out.' : 'Points are in line with the chances they have created and conceded.'}</p></div>`;
 }
 
 /* ---------- match ---------- */
@@ -488,7 +510,9 @@ async function matchPage(meta, lgKey, home, away) {
     `<b>${esc(home)}</b> rate ${ord(th.rank_attack)} for attack and ${ord(th.rank_defence)} for defence out of ${n} ${esc(L.name)} teams.`,
     `<b>${esc(away)}</b> rate ${ord(ta.rank_attack)} for attack and ${ord(ta.rank_defence)} for defence.`,
     `Playing at home is worth about <b>${L.model.home_effect_pct}%</b> more goals in the ${esc(L.name)}, based on recent seasons.`,
-    ...(L.model.alpha < 1 ? [`Ratings are built from <b>${Math.round(L.model.alpha * 100)}% goals and ${Math.round((1 - L.model.alpha) * 100)}% shots on target</b>, which smooths out lucky and unlucky results.`] : []),
+    ...(L.model.mix_xg && ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1'].includes(lgKey)
+      ? [`Ratings are built from <b>${Math.round(L.model.mix_xg[0] * 100)}% goals and ${Math.round(L.model.mix_xg[2] * 100)}% xG</b> (the quality of chances), which smooths out lucky and unlucky results.`]
+      : L.model.alpha < 1 ? [`Ratings are built from <b>${Math.round(L.model.alpha * 100)}% goals and ${Math.round((1 - L.model.alpha) * 100)}% shots on target</b>, which smooths out lucky and unlucky results.`] : []),
     ...(blended ? [`Adjusted with bookmakers' pre-match odds: home/draw/away is ${Math.round(meta.config.blend.w_1x2 * 100)}% bookmakers and goals markets are ${Math.round(meta.config.blend.w_o25 * 100)}% bookmakers. These weights were chosen on past seasons.`] : []),
     `Together that gives expected goals of <b>${p.lam.toFixed(2)}</b> for ${esc(home)} and <b>${p.mu.toFixed(2)}</b> for ${esc(away)}. Every probability on this page comes from that score distribution.`,
   ];
@@ -763,6 +787,7 @@ async function accuracyPage(meta) {
       <li>Its probabilities are <b>well calibrated</b>: when it says 40%, that outcome happened close to 40% of the time.</li>
       ${bl ? `<li>Combining it with <b>bookmakers' pre-match odds</b> matches the bookmakers' own accuracy. The best mix was ${Math.round(A.config.blend.w_1x2 * 100)}% bookmakers for home/draw/away and ${Math.round(A.config.blend.w_o25 * 100)}% for over/under 2.5.</li>` : ''}
       ${d.dc_vs_goals ? (A.config.alpha < 1 ? `<li>Ratings use <b>${Math.round(A.config.alpha * 100)}% goals and ${Math.round((1 - A.config.alpha) * 100)}% shots on target</b>, a small improvement over goals alone, mainly for goals markets.</li>` : `<li>Adding shots on target was tested and didn't beat goals alone.</li>`) : ''}
+      ${A.xg_test && A.xg_test.adopt ? `<li>In the top five leagues, ratings now use <b>${Math.round(A.xg_test.best[0] * 100)}% goals and ${Math.round(A.xg_test.best[2] * 100)}% xG</b> (expected goals, from Understat history). On the held-out seasons this cut log loss by ${Math.abs(A.xg_test.x12.mean).toFixed(4)} (95% interval ${Math.abs(A.xg_test.x12.hi).toFixed(4)} to ${Math.abs(A.xg_test.x12.lo).toFixed(4)}) and improved every one of the five leagues. The other four leagues keep goals + shots.</li>` : ''}
       <li>Bookmakers' <b>closing</b> odds remain the most accurate (${pct(mk.x12.accuracy, 1)} top pick), because they include late team news.</li>
     </ul></div>
     <div class="grid-2" style="margin-top:12px">

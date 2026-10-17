@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .data import LEAGUES, ROOT, SEASONS, Match, load_results
+from .data import LEAGUES, ROOT, SEASONS, UNDERSTAT_LEAGUES, Match, load_results
 from .blend import blended_prediction, tune_weights
 from .model import DCModel, fit, linked_priors, prediction, promoted_priors
 
@@ -64,25 +64,58 @@ def preseason_priors(matches, season, xi, ridge, extra_teams=(), feeder=None):
     return sorted(teams), priors, base.rho
 
 
-def shot_mixed(matches, alpha, cutoff):
-    """Replace each result's goals with alpha*goals + (1-alpha)*k*shots_on_target, where k is
-    the league's goals per shot on target before `cutoff`. Only used for fitting ratings;
-    predictions are always scored against real goals."""
-    if alpha >= 1:
+def mix_targets(matches, mix, cutoff):
+    """Replace each result's goals with a weighted mix of goals, shots on target and xG (each
+    scaled to goal-equivalents using the league's ratios before `cutoff`). A match missing a
+    component uses the remaining ones, re-weighted. Only used for fitting ratings; predictions
+    are always scored against real goals."""
+    g, s_, x = mix
+    if s_ <= 0 and x <= 0:
         return matches
-    prior = [m for m in matches if m.played and m.hst is not None and m.date < cutoff]
-    k = sum(m.hg + m.ag for m in prior) / max(1, sum(m.hst + m.ast for m in prior))
-    return [replace(m, hg=alpha * m.hg + (1 - alpha) * k * m.hst, ag=alpha * m.ag + (1 - alpha) * k * m.ast)
-            if m.played and m.hst is not None else m for m in matches]
+    prior = [m for m in matches if m.played and m.date < cutoff]
+    sot = [m for m in prior if m.hst is not None]
+    ks = sum(m.hg + m.ag for m in sot) / max(1, sum(m.hst + m.ast for m in sot))
+    xg_prior = [m for m in prior if m.hxg is not None]
+    kx = sum(m.hg + m.ag for m in xg_prior) / sum(m.hxg + m.axg for m in xg_prior) if xg_prior else 1.0
+    out = []
+    for m in matches:
+        if not m.played:
+            out.append(m)
+            continue
+        parts = [(g, m.hg, m.ag)]
+        if s_ > 0 and m.hst is not None:
+            parts.append((s_, ks * m.hst, ks * m.ast))
+        if x > 0 and m.hxg is not None:
+            parts.append((x, kx * m.hxg, kx * m.axg))
+        if len(parts) == 1:
+            out.append(m)
+            continue
+        tw = sum(w for w, _, _ in parts)
+        out.append(replace(m, hg=sum(w * h for w, h, _ in parts) / tw, ag=sum(w * a for w, _, a in parts) / tw))
+    return out
+
+
+def shot_mixed(matches, alpha, cutoff):
+    """alpha*goals + (1-alpha)*goal-equivalent shots on target (no xG)."""
+    return mix_targets(matches, (alpha, 1 - alpha, 0.0), cutoff)
+
+
+def mix_for(cfg, div):
+    """The ratings mix used for a league: goals/shots/xG where xG history exists and xG was
+    adopted, otherwise goals/shots."""
+    if cfg.get("mix_xg") and div in UNDERSTAT_LEAGUES:
+        return tuple(cfg["mix_xg"])
+    a = cfg.get("alpha", 1.0)
+    return (a, 1 - a, 0.0)
 
 
 def fit_current(matches, cutoff, cfg, teams, priors):
     """Fit with the configured goals/shots mix. Goal rates come from the mix; the low-score
     correction comes from actual goals (it describes scorelines, not chance creation)."""
-    alpha = cfg.get("alpha", 1.0)
-    if alpha >= 1:
+    mix = mix_for(cfg, matches[0].div)
+    if mix[0] >= 1:
         return fit(matches, cutoff, cfg["xi"], cfg["ridge"], teams=teams, priors=priors)
-    m = fit(shot_mixed(matches, alpha, cutoff), cutoff, cfg["xi"], cfg["ridge"], teams=teams, priors=priors, fix_rho=True)
+    m = fit(mix_targets(matches, mix, cutoff), cutoff, cfg["xi"], cfg["ridge"], teams=teams, priors=priors, fix_rho=True)
     m.rho = fit(matches, cutoff, cfg["xi"], cfg["ridge"], teams=teams, priors=priors).rho
     return m
 
@@ -97,12 +130,15 @@ def _baseline(matches, cutoff):
     return (h, d, 1 - h - d), o25, btts
 
 
-def replay(matches, season, xi, ridge, *, alpha=1.0, fix_rho=False, with_baseline=False, extra_teams=(), feeder=None):
+def replay(matches, season, xi, ridge, *, alpha=1.0, mix=None, fix_rho=False, with_baseline=False,
+           extra_teams=(), feeder=None):
     """Yield (match, prediction, model, baseline) for every played match in `season`."""
     teams, priors, rho = preseason_priors(matches, season, xi, ridge, extra_teams, feeder)
     played = [m for m in matches if m.season == season and m.played]
-    # Goals-per-shot ratio from before the season starts, so no in-season information leaks.
-    mixed = shot_mixed(matches, alpha, played[0].date) if played else matches
+    mix = tuple(mix) if mix else (alpha, 1 - alpha, 0.0)
+    alpha = mix[0]
+    # Goals-per-shot and goals-per-xG ratios from before the season, so nothing in-season leaks.
+    mixed = mix_targets(matches, mix, played[0].date) if played else matches
     i, model = 0, None
     while i < len(played):
         start = played[i].date
@@ -374,3 +410,57 @@ def link_experiment(data, cfg, log=print) -> dict:
         res["adopt"] = res["validation"]["all"]["mean"] < 0 and res["test"]["all"]["mean"] <= 0
         out[top] = res
     return out
+
+
+XG_MIXES = [(0.7, 0.3, 0.0), (0.5, 0.2, 0.3), (0.4, 0.1, 0.5), (0.3, 0.1, 0.6), (0.5, 0.0, 0.5), (0.3, 0.0, 0.7), (0.2, 0.0, 0.8)]
+
+
+def xg_experiment(data, cfg, log=print) -> dict:
+    """Does adding xG to the ratings beat the current goals + shots mix? Top five leagues only
+    (where xG history exists). Mix chosen on validation, confirmed on the held-out test seasons."""
+    divs = [d for d in UNDERSTAT_LEAGUES if d in data]
+    a0 = cfg.get("alpha", 1.0)
+    current = (a0, round(1 - a0, 10), 0.0)
+
+    def rows_for(mix, seasons):
+        out = []
+        for d in divs:
+            for season in seasons:
+                out += [record(m, p) for m, p, _, _ in replay(data[d], season, cfg["xi"], cfg["ridge"], mix=mix)]
+        return out
+
+    tried = []
+    for mix in XG_MIXES:
+        obj = float(_objective(rows_for(mix, VALIDATION)))
+        tried.append({"mix": list(mix), "objective": obj})
+        log(f"  goals/shots/xG {mix}: validation objective {obj:.4f}")
+    best = tuple(min(tried, key=lambda t: t["objective"])["mix"])
+    base_rows, best_rows = rows_for(current, TEST), rows_for(best, TEST)
+    for a, b in zip(base_rows, best_rows):
+        assert (a["home"], a["date"]) == (b["home"], b["date"])
+    ll1 = lambda rs: [ll_1x2(r["p"], r["outcome"]) for r in rs]
+    llo = lambda rs: [ll_bin(r["o25"], is_over(r)) for r in rs]
+    llb = lambda rs: [ll_bin(r["btts"], is_btts(r)) for r in rs]
+    res = {
+        "current": list(current), "best": list(best), "tried": tried, "n_test": len(base_rows),
+        "x12": bootstrap_diff(ll1(best_rows), ll1(base_rows)),
+        "o25": bootstrap_diff(llo(best_rows), llo(base_rows)),
+        "btts": bootstrap_diff(llb(best_rows), llb(base_rows)),
+        "accuracy_current": float(np.mean([int(np.argmax(r["p"])) == r["outcome"] for r in base_rows])),
+        "accuracy_best": float(np.mean([int(np.argmax(r["p"])) == r["outcome"] for r in best_rows])),
+        "by_league": {},
+    }
+    for d in divs:
+        a = [r for r in base_rows if r["div"] == d]
+        b = [r for r in best_rows if r["div"] == d]
+        res["by_league"][LEAGUES[d][0]] = {"name": LEAGUES[d][1], "n": len(a),
+                                           "x12_change": float(np.mean(ll1(b)) - np.mean(ll1(a))),
+                                           "o25_change": float(np.mean(llo(b)) - np.mean(llo(a)))}
+    val_best = min(t["objective"] for t in tried)
+    val_cur = next((t["objective"] for t in tried if tuple(t["mix"]) == current), val_best)
+    res["adopt"] = best != current and val_best < val_cur and (res["x12"]["mean"] + res["o25"]["mean"]) < 0
+    verdict = "ADOPT" if res["adopt"] else "keep current"
+    log(f"  best {best} vs current {current}: test log loss change 1X2 {res['x12']['mean']:+.4f} "
+        f"(95% {res['x12']['lo']:+.4f} to {res['x12']['hi']:+.4f}), O2.5 {res['o25']['mean']:+.4f}, "
+        f"BTTS {res['btts']['mean']:+.4f} -> {verdict}")
+    return res
