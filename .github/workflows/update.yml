@@ -12,6 +12,9 @@ on:
     - cron: "47 6 * * 6"   # Saturday 06:47 UTC (early and 3pm games)
     - cron: "47 9 * * 6"   # Saturday 09:47 UTC (afternoon and evening games)
     - cron: "47 7 * * 0"   # Sunday 07:47 UTC
+    # Evening runs to pick up weekend results (and settle saved predictions) soon after they're published.
+    - cron: "37 17 * * 0"  # Sunday 17:37 UTC
+    - cron: "37 17 * * 1"  # Monday 17:37 UTC
   workflow_dispatch:
   push:
     branches: [main]

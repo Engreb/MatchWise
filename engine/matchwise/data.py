@@ -222,7 +222,8 @@ def load_schedule(div: str, include_played: bool = False) -> list[dict]:
             continue
         ko = datetime.strptime(x["DateUtc"].replace("Z", ""), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         out.append({"home": x["HomeTeam"], "away": x["AwayTeam"], "kickoff_utc": ko,
-                    "date": ko.astimezone(UK).date(), "round": x.get("RoundNumber")})
+                    "date": ko.astimezone(UK).date(), "round": x.get("RoundNumber"),
+                    "hg": x.get("HomeTeamScore"), "ag": x.get("AwayTeamScore")})
     out.sort(key=lambda f: f["kickoff_utc"])
     return out
 

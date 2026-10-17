@@ -450,3 +450,4 @@ a.setting-row { color: inherit; }
 .tile[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
 .starbtn svg, .iconbtn svg { pointer-events: none; }
 .search { display: block; } .search svg { top: 50% !important; transform: translateY(-50%); }
+.show-m { display: none; } @media (max-width: 899px) { .show-m { display: inline; } }

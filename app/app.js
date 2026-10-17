@@ -658,17 +658,17 @@ function savedView(meta, H) {
       <div class="stat"><div class="lbl">Odds-adjusted</div><div class="val num">${rate(adj, m => m.pb)}</div><div class="meta">Brier ${br(adj, m => m.pb)}</div></div>
       <div class="stat"><div class="lbl">Bookmakers</div><div class="val num">${rate(mk, m => m.pmkt || m.mkt)}</div><div class="meta">Brier ${br(mk, m => m.pmkt || m.mkt)}</div></div>
     </div>
-    <div class="card"><table><thead><tr><th>Result</th><th class="r">Model</th><th class="r">Odds-adj.</th><th class="r hide-m">Saved</th><th class="r">Outcome</th></tr></thead><tbody>
+    <div class="card"><table><thead><tr><th>Result</th><th class="r">Model</th><th class="r">Odds-adj.</th><th class="r hide-m">Saved</th><th class="r"><span class="hide-m">Outcome</span></th></tr></thead><tbody>
       ${rows.map(m => {
         const shown = m.pb || m.p, ok = topIdx(shown) === m.outcome;
         return `<tr><td><div class="team" style="padding:0">${crest(m.home, 'sm')}<span style="font-weight:600" class="num">${esc(m.home)} ${m.hg}–${m.ag} ${esc(m.away)}</span></div>
-            <div class="small muted" style="margin-left:38px">${esc(LEAGUE_NAMES[m.league])} · ${fmtShort(m.date)}</div></td>
+            <div class="small muted" style="margin-left:38px">${esc(LEAGUE_NAMES[m.league])} · ${fmtShort(m.date)}${m.provisional ? ' · <span class="pill warn" style="padding:0 6px;font-size:10.5px" title="Score from fixturedownload.com; confirmed when football-data.co.uk publishes it">Provisional score</span>' : ''}</div></td>
           <td class="r">${cell(m.p)}</td><td class="r">${m.pb ? cell(m.pb) : '<span class="muted">—</span>'}</td>
           <td class="r small muted hide-m">${fmtDate(m.saved_at)}${m.saves > 1 ? ` · ${m.saves} saves` : ''}</td>
-          <td class="r">${ok ? '<span class="pill ok">Correct</span>' : '<span class="pill">Missed</span>'}</td></tr>`;
+          <td class="r">${ok ? '<span class="pill ok" aria-label="Correct"><span class="hide-m">Correct</span><span class="show-m">✓</span></span>' : '<span class="pill" aria-label="Missed"><span class="hide-m">Missed</span><span class="show-m">✗</span></span>'}</td></tr>`;
       }).join('')}
     </tbody></table></div>
-    <p class="small muted" style="margin-top:12px">H, D and A are the home win, draw and away win picks with their chance. "Outcome" judges the odds-adjusted pick when there was one, otherwise the model's. The latest save before kick-off counts.</p>
+    <p class="small muted" style="margin-top:12px">"Provisional score" means the result came from fixturedownload.com and will be confirmed when football-data.co.uk publishes it, usually within a few days. H, D and A are the home win, draw and away win picks with their chance. "Outcome" judges the odds-adjusted pick when there was one, otherwise the model's. The latest save before kick-off counts.</p>
   </div>`;
 }
 function seasonChart(rows) {
@@ -720,7 +720,7 @@ async function historyPage(meta) {
         const t = topIdx(m.p), ok = t === m.outcome, pick = [m.home, 'Draw', m.away][t];
         return `<tr><td class="num hide-m muted">${fmtShort(m.date)}</td>
           <td><div class="team" style="padding:0">${crest(m.home, 'sm')}<span style="font-weight:600" class="num">${esc(m.home)} ${m.hg}–${m.ag} ${esc(m.away)}</span></div>
-            <div class="small muted" style="margin-left:38px">${esc(LEAGUE_NAMES[m.league])} · ${m.source === 'saved' ? 'Saved before kick-off' : 'Replayed'}</div></td>
+            <div class="small muted" style="margin-left:38px">${esc(LEAGUE_NAMES[m.league])} · ${m.source === 'saved' ? 'Saved before kick-off' : 'Replayed'}${m.provisional ? ' · <span class="pill warn" style="padding:0 6px;font-size:10.5px" title="Score from fixturedownload.com; confirmed when football-data.co.uk publishes it">Provisional score</span>' : ''}</div></td>
           <td class="hide-m">${esc(pick)} <span class="small muted num">${pct(m.p[t])}</span></td>
           <td class="r num hide-m">${pct(m.p[m.outcome])}</td>
           <td class="r">${ok ? '<span class="pill ok">Correct</span>' : '<span class="pill">Missed</span>'}</td></tr>`;

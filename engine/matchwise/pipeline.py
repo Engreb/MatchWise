@@ -102,7 +102,8 @@ def upcoming_fixtures(div: str, teams: list[str], odds_rows: list[Match], now: d
 
     def has_result(s):
         h, a = canonical(s["home"], known), canonical(s["away"], known)
-        return (s["date"], h, a) in results
+        # A score from either source counts: provisional ones move straight to "settled".
+        return (s["date"], h, a) in results or s.get("hg") is not None
 
     allsched = [s for s in load_schedule(div, include_played=True) if not has_result(s)]
     future = [s for s in allsched if s["kickoff_utc"] > now]
@@ -140,6 +141,31 @@ def started_row(f: dict, key: str, div: str, ok: bool, pairs: dict, snaps: dict)
             "saved_adj": [s["bH"], s["bD"], s["bA"]] if "bH" in s else None,
             "market": s.get("market"), "odds_source": s.get("odds_source"),
             "model": model, "blend": s.get("bp")}
+
+
+def provisional_rows(div: str, key: str, teams: list[str], results: set, snaps: dict, schedule=None) -> list[dict]:
+    """Settle saved predictions early from fixturedownload.com scores, for matches football-data
+    hasn't published yet. Marked provisional; they're replaced automatically once football-data
+    has the result (the model only ever trains on football-data results)."""
+    known, out = set(teams), []
+    for s in (schedule if schedule is not None else load_schedule(div, include_played=True)):
+        if s.get("hg") is None or s.get("ag") is None:
+            continue
+        h, a = canonical(s["home"], known), canonical(s["away"], known)
+        if not h or not a or (s["date"], h, a) in results:
+            continue
+        snap = snaps.get((div, s["date"].isoformat(), h, a))
+        if not snap:
+            continue  # only predictions actually saved before kick-off are settled this way
+        hg, ag = int(s["hg"]), int(s["ag"])
+        out.append({
+            "league": key, "date": s["date"].isoformat(), "home": h, "away": a, "hg": hg, "ag": ag,
+            "outcome": 0 if hg > ag else 1 if hg == ag else 2,
+            "p": [_r(snap["H"]), _r(snap["D"]), _r(snap["A"])], "o25": _r(snap["o25"]), "btts": _r(snap["btts"]),
+            "mkt": snap.get("market"), "source": "saved", "provisional": True, "cutoff": snap["cutoff"],
+            **saved_extras(snap),
+        })
+    return out
 
 
 def saved_extras(s: dict) -> dict:
@@ -271,6 +297,10 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             })
         if not trend_dates or trend_dates[-1] != model.cutoff.isoformat():
             add_trend(model)
+        prov = provisional_rows(div, key, teams, {(m.date, m.home, m.away) for m in cur}, snaps)
+        history_rows.extend(prov)
+        if prov:
+            log(f"    settled {len(prov)} saved predictions provisionally from fixturedownload.com scores")
 
         # Projected final table: every remaining scheduled game simulated from the current model.
         known = set(teams)
