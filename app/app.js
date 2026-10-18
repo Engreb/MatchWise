@@ -755,8 +755,28 @@ async function historyPage(meta) {
   </div>`;
 }
 
+function strategyCard(S) {
+  if (!S || !S.by_price) return '';
+  const avg = S.by_price.avg || [], best = Object.fromEntries((S.by_price.max || []).map(x => [x.key, x]));
+  const money = v => `${v < 0 ? '−' : '+'}£${Math.abs(v).toFixed(0)}`;
+  const roi = x => `<span class="num" style="font-weight:600;color:${x.roi_hi < 0 ? 'var(--loss)' : x.roi_lo > 0 ? 'var(--win)' : 'var(--text-2)'}">${x.roi >= 0 ? '+' : '−'}${Math.abs(x.roi * 100).toFixed(1)}%</span>`;
+  const label = x => x.key.startsWith('value_') ? `“Value” bets, edge ${x.key.split('_')[1]}%+` : x.label.replace(' (what the app highlights)', '');
+  return `<div class="card" style="margin-top:12px;overflow:hidden" id="money"><div class="card-head"><h3>Would it make money?</h3><span class="small muted">£1 on every bet · ${S.matches.toLocaleString('en-GB')} matches, ${S.seasons.join(' and ')}</span></div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Strategy</th><th class="r hide-m">Bets</th><th class="r hide-m">Won</th><th class="r">Profit</th><th class="r">Return</th><th class="r">Best price</th></tr></thead><tbody>
+    ${avg.map(x => `<tr${x.key === 'adj_top' ? ' style="background:var(--accent-soft)"' : ''}><td style="font-weight:${x.key === 'adj_top' ? 600 : 400}">${esc(label(x))}${x.key === 'adj_top' ? ' <span class="small muted">(the app’s top pick)</span>' : ''}</td>
+      <td class="r num hide-m">${x.bets.toLocaleString('en-GB')}</td><td class="r num hide-m">${pct(x.hit_rate)}</td><td class="r num" style="white-space:nowrap">${money(x.profit)}</td><td class="r">${roi(x)}</td><td class="r">${best[x.key] ? roi(best[x.key]) : '—'}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="card-pad" style="border-top:1px solid var(--border)"><ul class="why" style="margin:0">
+      <li><b>Every strategy lost money</b> at typical bookmaker prices. The best was backing the app’s top pick, which is almost always the bookmakers’ favourite: it lost about ${Math.abs((avg.find(x => x.key === 'adj_top') || {}).roi * 100 || 0).toFixed(1)}p per £1, a little less than the bookmakers’ average ${(S.avg_margin * 100).toFixed(1)}% margin.</li>
+      <li><b>“Value” bets lost the most</b>, and the bigger the apparent edge, the bigger the loss. When the model strongly disagrees with the odds, the model is usually the one missing something (often team news).</li>
+      <li>“Best price” means always taking the best odds across all bookmakers (margin about ${(S.best_price_margin * 100).toFixed(1)}%). Even then nothing reliably made money: any result whose range includes zero is shown in grey and is within luck.</li>
+      <li>So these predictions are for understanding matches, not for choosing bets. If betting stops being fun, GamCare (0808 8020 133) and BeGambleAware offer free, confidential help.</li>
+    </ul></div></div>`;
+}
 async function accuracyPage(meta) {
   const A = await getJSON('accuracy');
+  let STRAT = null;
+  try { STRAT = await getJSON('strategies'); } catch { /* optional */ }
   const W = 320, Hh = 240, P = 36, sx = v => P + v * (W - P - 12), sy = v => Hh - P - v * (Hh - P - 12);
   const cal = A.calibration_1x2.filter(c => c.n >= 20);
   const chart = `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Calibration chart of predicted chance against how often it happened" style="color:var(--text-3)">
@@ -790,6 +810,7 @@ async function accuracyPage(meta) {
       ${A.xg_test && A.xg_test.adopt ? `<li>In the top five leagues, ratings now use <b>${Math.round(A.xg_test.best[0] * 100)}% goals and ${Math.round(A.xg_test.best[2] * 100)}% xG</b> (expected goals, from Understat history). On the held-out seasons this cut log loss by ${Math.abs(A.xg_test.x12.mean).toFixed(4)} (95% interval ${Math.abs(A.xg_test.x12.hi).toFixed(4)} to ${Math.abs(A.xg_test.x12.lo).toFixed(4)}) and improved every one of the five leagues. The other four leagues keep goals + shots.</li>` : ''}
       <li>Bookmakers' <b>closing</b> odds remain the most accurate (${pct(mk.x12.accuracy, 1)} top pick), because they include late team news.</li>
     </ul></div>
+    ${strategyCard(STRAT)}
     <div class="grid-2" style="margin-top:12px">
       <div class="card card-pad"><h3 style="margin-bottom:2px">Calibration</h3><p class="small muted" style="margin:0 0 10px">Closer to the dashed line is better.</p>${chart}</div>
       <div class="card"><div class="card-head"><h3>By league</h3><span class="small muted">Log loss</span></div><table><thead><tr><th>League</th><th class="r">Model</th><th class="r">Bookmakers</th><th class="r">Top pick</th></tr></thead><tbody>

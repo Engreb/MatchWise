@@ -19,6 +19,7 @@ def main() -> None:
         data.download()
     if args.command in ("backtest", "all"):
         backtest.run(APP_DATA)
+        strategies.run(APP_DATA)  # keep the money backtest in step with the re-tuned model
     if args.command == "strategies":
         strategies.run(APP_DATA)
     if args.command in ("update", "all"):

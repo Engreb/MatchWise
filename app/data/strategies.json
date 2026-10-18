@@ -1,0 +1,753 @@
+{
+ "seasons": [
+  "2024\u201325",
+  "2025\u201326"
+ ],
+ "matches": 6288,
+ "prices": {
+  "avg": "Average bookmaker",
+  "max": "Best price available",
+  "b365": "Bet365"
+ },
+ "by_price": {
+  "avg": [
+   {
+    "key": "model_top",
+    "label": "Model's top pick",
+    "bets": 6288,
+    "wins": 3245,
+    "hit_rate": 0.5160623409669212,
+    "avg_odds": 1.9664472010178118,
+    "profit": -349.32,
+    "roi": -0.055553435114503814,
+    "roi_lo": -0.08149992048346057,
+    "roi_hi": -0.03127051526717558
+   },
+   {
+    "key": "adj_top",
+    "label": "Odds-adjusted top pick (what the app highlights)",
+    "bets": 6288,
+    "wins": 3314,
+    "hit_rate": 0.5270356234096693,
+    "avg_odds": 1.9172932569974552,
+    "profit": -273.96000000000004,
+    "roi": -0.04356870229007634,
+    "roi_lo": -0.067298862913486,
+    "roi_hi": -0.020455788804071257
+   },
+   {
+    "key": "favourite",
+    "label": "Bookmaker favourite (shortest odds)",
+    "bets": 6288,
+    "wins": 3314,
+    "hit_rate": 0.5270356234096693,
+    "avg_odds": 1.9172932569974552,
+    "profit": -273.96000000000004,
+    "roi": -0.04356870229007634,
+    "roi_lo": -0.06662841921119592,
+    "roi_hi": -0.020133110687022907
+   },
+   {
+    "key": "home",
+    "label": "Every home win",
+    "bets": 6288,
+    "wins": 2733,
+    "hit_rate": 0.43463740458015265,
+    "avg_odds": 2.7041968829516536,
+    "profit": -519.3500000000001,
+    "roi": -0.08259382951653946,
+    "roi_lo": -0.11183917779898218,
+    "roi_hi": -0.050922113549618356
+   },
+   {
+    "key": "draw",
+    "label": "Every draw",
+    "bets": 6288,
+    "wins": 1613,
+    "hit_rate": 0.2565203562340967,
+    "avg_odds": 4.0008237913486004,
+    "profit": -223.49999999999994,
+    "roi": -0.035543893129770986,
+    "roi_lo": -0.08004564249363869,
+    "roi_hi": 0.0053188613231551956
+   },
+   {
+    "key": "away",
+    "label": "Every away win",
+    "bets": 6288,
+    "wins": 1942,
+    "hit_rate": 0.30884223918575066,
+    "avg_odds": 4.216304071246819,
+    "profit": -676.8199999999999,
+    "roi": -0.10763676844783714,
+    "roi_lo": -0.1482721453562341,
+    "roi_hi": -0.06610424618320612
+   },
+   {
+    "key": "value_0",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 0%+",
+    "bets": 5007,
+    "wins": 1383,
+    "hit_rate": 0.2762133013780707,
+    "avg_odds": 4.348548032754144,
+    "profit": -614.77,
+    "roi": -0.1227821050529259,
+    "roi_lo": -0.1693979928100659,
+    "roi_hi": -0.07641506890353505
+   },
+   {
+    "key": "value_5",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 5%+",
+    "bets": 3567,
+    "wins": 873,
+    "hit_rate": 0.2447434819175778,
+    "avg_odds": 4.811752172694141,
+    "profit": -496.9,
+    "roi": -0.13930473787496495,
+    "roi_lo": -0.19624992991309223,
+    "roi_hi": -0.08129955144379035
+   },
+   {
+    "key": "value_10",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+    "bets": 2501,
+    "wins": 552,
+    "hit_rate": 0.22071171531387446,
+    "avg_odds": 5.28313074770092,
+    "profit": -382.97,
+    "roi": -0.1531267493002799,
+    "roi_lo": -0.22427429028388646,
+    "roi_hi": -0.0815554778088765
+   },
+   {
+    "key": "value_20",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 20%+",
+    "bets": 1215,
+    "wins": 209,
+    "hit_rate": 0.1720164609053498,
+    "avg_odds": 6.289818930041152,
+    "profit": -266.38,
+    "roi": -0.21924279835390947,
+    "roi_lo": -0.32480493827160495,
+    "roi_hi": -0.10699341563786013
+   }
+  ],
+  "max": [
+   {
+    "key": "model_top",
+    "label": "Model's top pick",
+    "bets": 6288,
+    "wins": 3245,
+    "hit_rate": 0.5160623409669212,
+    "avg_odds": 2.026541030534351,
+    "profit": -174.60000000000002,
+    "roi": -0.02776717557251909,
+    "roi_lo": -0.05475763358778627,
+    "roi_hi": -0.002493598918575065
+   },
+   {
+    "key": "adj_top",
+    "label": "Odds-adjusted top pick (what the app highlights)",
+    "bets": 6288,
+    "wins": 3314,
+    "hit_rate": 0.5270356234096693,
+    "avg_odds": 1.9737134223918573,
+    "profit": -99.82000000000002,
+    "roi": -0.01587468193384224,
+    "roi_lo": -0.04027675731552163,
+    "roi_hi": 0.007473123409669198
+   },
+   {
+    "key": "favourite",
+    "label": "Bookmaker favourite (shortest odds)",
+    "bets": 6288,
+    "wins": 3306,
+    "hit_rate": 0.5257633587786259,
+    "avg_odds": 1.9735209923664123,
+    "profit": -121.25,
+    "roi": -0.019282760814249365,
+    "roi_lo": -0.04394624681933843,
+    "roi_hi": 0.004770992366412211
+   },
+   {
+    "key": "home",
+    "label": "Every home win",
+    "bets": 6288,
+    "wins": 2733,
+    "hit_rate": 0.43463740458015265,
+    "avg_odds": 2.8455916030534354,
+    "profit": -301.02000000000004,
+    "roi": -0.047872137404580156,
+    "roi_lo": -0.07906866253180661,
+    "roi_hi": -0.014195252862595431
+   },
+   {
+    "key": "draw",
+    "label": "Every draw",
+    "bets": 6288,
+    "wins": 1613,
+    "hit_rate": 0.2565203562340967,
+    "avg_odds": 4.217794211195929,
+    "profit": 63.139999999999986,
+    "roi": 0.010041348600508903,
+    "roi_lo": -0.03716849554707379,
+    "roi_hi": 0.05330260019083967
+   },
+   {
+    "key": "away",
+    "label": "Every away win",
+    "bets": 6288,
+    "wins": 1942,
+    "hit_rate": 0.30884223918575066,
+    "avg_odds": 4.5769624681933845,
+    "profit": -388.46,
+    "roi": -0.06177798982188295,
+    "roi_lo": -0.10556564090330788,
+    "roi_hi": -0.017515943066157783
+   },
+   {
+    "key": "value_0",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 0%+",
+    "bets": 6053,
+    "wins": 1710,
+    "hit_rate": 0.28250454320171814,
+    "avg_odds": 4.662192301338179,
+    "profit": -483.37,
+    "roi": -0.07985626961837106,
+    "roi_lo": -0.124064265653395,
+    "roi_hi": -0.035448000991244046
+   },
+   {
+    "key": "value_5",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 5%+",
+    "bets": 4774,
+    "wins": 1194,
+    "hit_rate": 0.2501047339757017,
+    "avg_odds": 5.072369082530372,
+    "profit": -494.99,
+    "roi": -0.10368454126518643,
+    "roi_lo": -0.15598099078341016,
+    "roi_hi": -0.04825282781734396
+   },
+   {
+    "key": "value_10",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+    "bets": 3557,
+    "wins": 793,
+    "hit_rate": 0.22294068034860837,
+    "avg_odds": 5.627852122575203,
+    "profit": -403.79999999999995,
+    "roi": -0.11352263143098115,
+    "roi_lo": -0.1743930981163902,
+    "roi_hi": -0.048849451785212376
+   },
+   {
+    "key": "value_20",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 20%+",
+    "bets": 1970,
+    "wins": 366,
+    "hit_rate": 0.18578680203045686,
+    "avg_odds": 6.802578680203046,
+    "profit": -237.67,
+    "roi": -0.12064467005076142,
+    "roi_lo": -0.21082373096446702,
+    "roi_hi": -0.02693642131979699
+   }
+  ],
+  "b365": [
+   {
+    "key": "model_top",
+    "label": "Model's top pick",
+    "bets": 6288,
+    "wins": 3245,
+    "hit_rate": 0.5160623409669212,
+    "avg_odds": 1.959748727735369,
+    "profit": -371.81000000000006,
+    "roi": -0.05913008905852418,
+    "roi_lo": -0.08511462309160306,
+    "roi_hi": -0.034916507633587814
+   },
+   {
+    "key": "adj_top",
+    "label": "Odds-adjusted top pick (what the app highlights)",
+    "bets": 6288,
+    "wins": 3314,
+    "hit_rate": 0.5270356234096693,
+    "avg_odds": 1.909001272264631,
+    "profit": -297.38,
+    "roi": -0.04729325699745547,
+    "roi_lo": -0.0710992763994911,
+    "roi_hi": -0.024480200381679404
+   },
+   {
+    "key": "favourite",
+    "label": "Bookmaker favourite (shortest odds)",
+    "bets": 6288,
+    "wins": 3304,
+    "hit_rate": 0.5254452926208651,
+    "avg_odds": 1.9088152035623411,
+    "profit": -324.24,
+    "roi": -0.05156488549618321,
+    "roi_lo": -0.07387845896946565,
+    "roi_hi": -0.02799435432569975
+   },
+   {
+    "key": "home",
+    "label": "Every home win",
+    "bets": 6288,
+    "wins": 2733,
+    "hit_rate": 0.43463740458015265,
+    "avg_odds": 2.6995276717557246,
+    "profit": -522.1800000000001,
+    "roi": -0.08304389312977101,
+    "roi_lo": -0.11275974077608142,
+    "roi_hi": -0.05128284033078881
+   },
+   {
+    "key": "draw",
+    "label": "Every draw",
+    "bets": 6288,
+    "wins": 1613,
+    "hit_rate": 0.2565203562340967,
+    "avg_odds": 4.001423346055979,
+    "profit": -210.92000000000002,
+    "roi": -0.03354325699745547,
+    "roi_lo": -0.07845976463104326,
+    "roi_hi": 0.007647741730279864
+   },
+   {
+    "key": "away",
+    "label": "Every away win",
+    "bets": 6288,
+    "wins": 1942,
+    "hit_rate": 0.30884223918575066,
+    "avg_odds": 4.1910512086514,
+    "profit": -657.8599999999999,
+    "roi": -0.10462150127226462,
+    "roi_lo": -0.14478447041984732,
+    "roi_hi": -0.06380697360050894
+   },
+   {
+    "key": "value_0",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 0%+",
+    "bets": 5098,
+    "wins": 1409,
+    "hit_rate": 0.2763828952530404,
+    "avg_odds": 4.336918399372303,
+    "profit": -543.0,
+    "roi": -0.10651235778736759,
+    "roi_lo": -0.15218016869360534,
+    "roi_hi": -0.06009802863868187
+   },
+   {
+    "key": "value_5",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 5%+",
+    "bets": 3671,
+    "wins": 887,
+    "hit_rate": 0.2416235358213021,
+    "avg_odds": 4.741669844728957,
+    "profit": -501.97,
+    "roi": -0.13673930809043858,
+    "roi_lo": -0.19087169708526283,
+    "roi_hi": -0.07814682647779897
+   },
+   {
+    "key": "value_10",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+    "bets": 2585,
+    "wins": 556,
+    "hit_rate": 0.2150870406189555,
+    "avg_odds": 5.20458413926499,
+    "profit": -377.04,
+    "roi": -0.14585686653771762,
+    "roi_lo": -0.21680580270793035,
+    "roi_hi": -0.07427698259187651
+   },
+   {
+    "key": "value_20",
+    "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 20%+",
+    "bets": 1300,
+    "wins": 237,
+    "hit_rate": 0.1823076923076923,
+    "avg_odds": 6.076446153846153,
+    "profit": -183.32999999999998,
+    "roi": -0.14102307692307692,
+    "roi_lo": -0.2500513461538461,
+    "roi_hi": -0.023788653846153963
+   }
+  ]
+ },
+ "by_league": {
+  "epl": {
+   "name": "Premier League",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 760,
+     "wins": 394,
+     "hit_rate": 0.5184210526315789,
+     "avg_odds": 1.9251184210526318,
+     "profit": -34.070000000000014,
+     "roi": -0.04482894736842107,
+     "roi_lo": -0.11200394736842105,
+     "roi_hi": 0.023442105263157847
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 760,
+     "wins": 391,
+     "hit_rate": 0.5144736842105263,
+     "avg_odds": 1.9249868421052632,
+     "profit": -42.32000000000001,
+     "roi": -0.0556842105263158,
+     "roi_lo": -0.1251901315789474,
+     "roi_hi": 0.014698684210526156
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 491,
+     "wins": 118,
+     "hit_rate": 0.24032586558044808,
+     "avg_odds": 5.654175152749491,
+     "profit": -40.96,
+     "roi": -0.08342158859470468,
+     "roi_lo": -0.24473014256619144,
+     "roi_hi": 0.08660845213849282
+    }
+   ]
+  },
+  "laliga": {
+   "name": "La Liga",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 760,
+     "wins": 416,
+     "hit_rate": 0.5473684210526316,
+     "avg_odds": 2.015828947368421,
+     "profit": 30.64,
+     "roi": 0.040315789473684215,
+     "roi_lo": -0.03099506578947368,
+     "roi_hi": 0.11393618421052629
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 760,
+     "wins": 415,
+     "hit_rate": 0.5460526315789473,
+     "avg_odds": 2.0156973684210526,
+     "profit": 27.919999999999995,
+     "roi": 0.03673684210526315,
+     "roi_lo": -0.03505361842105263,
+     "roi_hi": 0.10905855263157885
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 429,
+     "wins": 85,
+     "hit_rate": 0.19813519813519814,
+     "avg_odds": 5.850442890442889,
+     "profit": -71.96000000000001,
+     "roi": -0.16773892773892776,
+     "roi_lo": -0.34506934731934735,
+     "roi_hi": 0.030292540792540606
+    }
+   ]
+  },
+  "seriea": {
+   "name": "Serie A",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 760,
+     "wins": 406,
+     "hit_rate": 0.5342105263157895,
+     "avg_odds": 1.9758947368421054,
+     "profit": -3.780000000000001,
+     "roi": -0.004973684210526318,
+     "roi_lo": -0.0732921052631579,
+     "roi_hi": 0.06539243421052626
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 760,
+     "wins": 409,
+     "hit_rate": 0.5381578947368421,
+     "avg_odds": 1.9756973684210526,
+     "profit": 4.890000000000003,
+     "roi": 0.006434210526315794,
+     "roi_lo": -0.060710855263157885,
+     "roi_hi": 0.07301809210526312
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 442,
+     "wins": 83,
+     "hit_rate": 0.18778280542986425,
+     "avg_odds": 5.925791855203619,
+     "profit": -81.07000000000002,
+     "roi": -0.18341628959276024,
+     "roi_lo": -0.364112556561086,
+     "roi_hi": 0.0007296380090497436
+    }
+   ]
+  },
+  "bundesliga": {
+   "name": "Bundesliga",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 612,
+     "wins": 327,
+     "hit_rate": 0.5343137254901961,
+     "avg_odds": 1.9514379084967324,
+     "profit": -9.989999999999998,
+     "roi": -0.016323529411764702,
+     "roi_lo": -0.09325735294117647,
+     "roi_hi": 0.0636503267973856
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 612,
+     "wins": 327,
+     "hit_rate": 0.5343137254901961,
+     "avg_odds": 1.95109477124183,
+     "profit": -9.83,
+     "roi": -0.016062091503267973,
+     "roi_lo": -0.09413970588235294,
+     "roi_hi": 0.06297263071895416
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 273,
+     "wins": 57,
+     "hit_rate": 0.2087912087912088,
+     "avg_odds": 5.341611721611722,
+     "profit": -51.9,
+     "roi": -0.1901098901098901,
+     "roi_lo": -0.3827884615384615,
+     "roi_hi": 0.029167582417582365
+    }
+   ]
+  },
+  "ligue1": {
+   "name": "Ligue 1",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 612,
+     "wins": 331,
+     "hit_rate": 0.5408496732026143,
+     "avg_odds": 1.9404411764705882,
+     "profit": -2.6099999999999977,
+     "roi": -0.004264705882352937,
+     "roi_lo": -0.07849305555555555,
+     "roi_hi": 0.06722508169934639
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 612,
+     "wins": 332,
+     "hit_rate": 0.5424836601307189,
+     "avg_odds": 1.9403267973856209,
+     "profit": 0.02000000000000135,
+     "roi": 3.267973856209371e-05,
+     "roi_lo": -0.0763092320261438,
+     "roi_hi": 0.07620179738562086
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 346,
+     "wins": 74,
+     "hit_rate": 0.2138728323699422,
+     "avg_odds": 5.583988439306358,
+     "profit": -16.479999999999997,
+     "roi": -0.0476300578034682,
+     "roi_lo": -0.2608171965317919,
+     "roi_hi": 0.18253323699421942
+    }
+   ]
+  },
+  "championship": {
+   "name": "Championship",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 1104,
+     "wins": 521,
+     "hit_rate": 0.47192028985507245,
+     "avg_odds": 2.12893115942029,
+     "profit": -30.290000000000006,
+     "roi": -0.027436594202898557,
+     "roi_lo": -0.0904669384057971,
+     "roi_hi": 0.03314153079710141
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 1104,
+     "wins": 517,
+     "hit_rate": 0.4682971014492754,
+     "avg_odds": 2.128659420289855,
+     "profit": -41.400000000000006,
+     "roi": -0.037500000000000006,
+     "roi_lo": -0.09681476449275361,
+     "roi_hi": 0.028479393115941967
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 652,
+     "wins": 178,
+     "hit_rate": 0.27300613496932513,
+     "avg_odds": 4.485674846625766,
+     "profit": -28.37,
+     "roi": -0.04351226993865031,
+     "roi_lo": -0.16842407975460122,
+     "roi_hi": 0.09250920245398767
+    }
+   ]
+  },
+  "scotland": {
+   "name": "Scottish Premiership",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 456,
+     "wins": 243,
+     "hit_rate": 0.5328947368421053,
+     "avg_odds": 1.9150438596491228,
+     "profit": -21.689999999999998,
+     "roi": -0.04756578947368421,
+     "roi_lo": -0.1335328947368421,
+     "roi_hi": 0.03313103070175428
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 456,
+     "wins": 243,
+     "hit_rate": 0.5328947368421053,
+     "avg_odds": 1.9147807017543859,
+     "profit": -21.74,
+     "roi": -0.047675438596491225,
+     "roi_lo": -0.14220339912280705,
+     "roi_hi": 0.037963815789473665
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 237,
+     "wins": 53,
+     "hit_rate": 0.22362869198312235,
+     "avg_odds": 5.801772151898734,
+     "profit": -30.77,
+     "roi": -0.12983122362869198,
+     "roi_lo": -0.4043111814345991,
+     "roi_hi": 0.19160548523206752
+    }
+   ]
+  },
+  "eredivisie": {
+   "name": "Eredivisie",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 612,
+     "wins": 331,
+     "hit_rate": 0.5408496732026143,
+     "avg_odds": 1.8645751633986927,
+     "profit": -30.69,
+     "roi": -0.05014705882352941,
+     "roi_lo": -0.12420547385620916,
+     "roi_hi": 0.02650204248366005
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 612,
+     "wins": 327,
+     "hit_rate": 0.5343137254901961,
+     "avg_odds": 1.8643790849673203,
+     "profit": -41.49000000000001,
+     "roi": -0.06779411764705884,
+     "roi_lo": -0.13779493464052286,
+     "roi_hi": 0.004799019607843079
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 274,
+     "wins": 60,
+     "hit_rate": 0.21897810218978103,
+     "avg_odds": 5.3199270072992695,
+     "profit": -26.82,
+     "roi": -0.09788321167883211,
+     "roi_lo": -0.3183558394160584,
+     "roi_hi": 0.15936678832116757
+    }
+   ]
+  },
+  "portugal": {
+   "name": "Primeira Liga",
+   "results": [
+    {
+     "key": "adj_top",
+     "label": "Odds-adjusted top pick (what the app highlights)",
+     "bets": 612,
+     "wins": 345,
+     "hit_rate": 0.5637254901960784,
+     "avg_odds": 1.907450980392157,
+     "profit": 2.6599999999999957,
+     "roi": 0.004346405228758163,
+     "roi_lo": -0.07003472222222222,
+     "roi_hi": 0.07988684640522875
+    },
+    {
+     "key": "favourite",
+     "label": "Bookmaker favourite (shortest odds)",
+     "bets": 612,
+     "wins": 345,
+     "hit_rate": 0.5637254901960784,
+     "avg_odds": 1.907385620915033,
+     "profit": 2.699999999999995,
+     "roi": 0.004411764705882344,
+     "roi_lo": -0.06957679738562092,
+     "roi_hi": 0.08150408496732027
+    },
+    {
+     "key": "value_10",
+     "label": "'Value' bets: model's chance \u00d7 odds beats 1 by 10%+",
+     "bets": 413,
+     "wins": 85,
+     "hit_rate": 0.20581113801452786,
+     "avg_odds": 7.180072639225181,
+     "profit": -55.470000000000006,
+     "roi": -0.13430992736077482,
+     "roi_lo": -0.3297560532687651,
+     "roi_hi": 0.0756943099273605
+    }
+   ]
+  }
+ },
+ "avg_margin": 0.06007658125232807,
+ "best_price_margin": 0.020874744650585756
+}
