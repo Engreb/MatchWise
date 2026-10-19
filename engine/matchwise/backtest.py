@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .data import LEAGUES, ROOT, SEASONS, UNDERSTAT_LEAGUES, Match, load_results
+from .data import LEAGUES, ROOT, SEASONS, TUNING_DIVS, UNDERSTAT_LEAGUES, Match, load_results
 from .blend import blended_prediction, tune_weights
 from .model import DCModel, fit, linked_priors, prediction, promoted_priors
 
@@ -282,9 +282,9 @@ def evaluate(data, cfg, log=print) -> dict:
         for season in TEST:
             log(f"  test replay {div} {season}")
             dc_rows += [record(m, p, b) for m, p, _, b in
-                        replay(matches, season, cfg["xi"], cfg["ridge"], alpha=cfg["alpha"], with_baseline=True)]
+                        replay(matches, season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), with_baseline=True)]
             pois_rows += [record(m, p) for m, p, _, _ in
-                          replay(matches, season, cfg["xi"], cfg["ridge"], alpha=cfg["alpha"], fix_rho=True)]
+                          replay(matches, season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), fix_rho=True)]
             goal_rows += [record(m, p) for m, p, _, _ in replay(matches, season, g["xi"], g["ridge"])]
     for r, q, gr in zip(dc_rows, pois_rows, goal_rows):
         assert (r["home"], r["date"]) == (q["home"], q["date"]) == (gr["home"], gr["date"])
@@ -299,7 +299,7 @@ def evaluate(data, cfg, log=print) -> dict:
     # Compare on matches with both pre-match and closing prices so every approach scores the same games.
     common = [r for r in dc_rows if r["mkt"] and r["mkt_open"]]
     approaches = [
-        ("dc", "Model only" + (" (goals + shots on target)" if cfg["alpha"] < 1 else " (Dixon–Coles)"), "p", "o25", "btts"),
+        ("dc", "Model only" + (" (goals + xG in the top five, goals + shots elsewhere)" if cfg.get("mix_xg") else " (goals + shots on target)" if cfg["alpha"] < 1 else " (Dixon–Coles)"), "p", "o25", "btts"),
         ("goals", "Model only, goals-based ratings", "goals", "goals_o25", "goals_btts"),
         ("blend", "Model + pre-match bookmaker odds (blended)", "blend", "blend_o25", "blend_btts"),
         ("market_open", "Bookmaker pre-match odds", "mkt_open", "mkt_o25_open", None),
@@ -328,13 +328,18 @@ def evaluate(data, cfg, log=print) -> dict:
     }
     cal_x12, ece_x12 = calibration([(r["p"][k], int(r["outcome"] == k)) for r in dc_rows for k in range(3)])
     cal_o25, ece_o25 = calibration([(r["o25"], int(is_over(r))) for r in dc_rows])
+    cal_btts, ece_btts = calibration([(r["btts"], int(is_btts(r))) for r in dc_rows])
+    cal_blend_o25, ece_blend_o25 = calibration([(r["blend_o25"], int(is_over(r))) for r in common])
     cal_blend, ece_blend = calibration([(r["blend"][k], int(r["outcome"] == k)) for r in common for k in range(3)])
 
     by_league = []
     for div, (key, name) in LEAGUES.items():
         rows = [r for r in common if r["div"] == div]
-        by_league.append({"key": key, "name": name, "dc": summarize_1x2(rows, "p"), "blend": summarize_1x2(rows, "blend"),
-                          "market": summarize_1x2(rows, "mkt")})
+        by_league.append({"key": key, "name": name, "tuned_on": div in TUNING_DIVS,
+                          "dc": summarize_1x2(rows, "p"), "blend": summarize_1x2(rows, "blend"),
+                          "market": summarize_1x2(rows, "mkt"),
+                          "o25": summarize_bin(rows, "o25", is_over), "o25_market": summarize_bin(rows, "mkt_o25", is_over),
+                          "btts": summarize_bin(rows, "btts", is_btts)})
     by_season = []
     for season in TEST:
         rows = [r for r in common if r["season"] == season]
@@ -350,6 +355,9 @@ def evaluate(data, cfg, log=print) -> dict:
         "table": table, "diffs": diffs,
         "calibration_1x2": cal_x12, "ece_1x2": ece_x12,
         "calibration_o25": cal_o25, "ece_o25": ece_o25,
+        "calibration_btts": cal_btts, "ece_btts": ece_btts,
+        "calibration_blend_o25": cal_blend_o25, "ece_blend_o25": ece_blend_o25,
+        "tuning_leagues": [LEAGUES[d][1] for d in TUNING_DIVS],
         "calibration_blend": cal_blend, "ece_blend": ece_blend,
         "by_league": by_league, "by_season": by_season,
         "status": "validated" if validated else "research",
@@ -359,9 +367,13 @@ def evaluate(data, cfg, log=print) -> dict:
 def run(out_dir: Path, log=print) -> dict:
     t0 = time.time()
     data = {div: load_results(div) for div in LEAGUES}
+    prev = load_config()
     log("Tuning on validation season(s)…")
-    cfg, tried, val_rows = tune(data, log)
+    # Settings are tuned on the original nine leagues only; the others are pure out-of-sample tests.
+    cfg, tried, val_rows = tune({d: data[d] for d in TUNING_DIVS}, log)
     cfg["blend"] = tune_weights([r for r in val_rows], ll_1x2, ll_bin, is_over)
+    if prev.get("mix_xg"):
+        cfg["mix_xg"] = prev["mix_xg"]  # adopted by the separate xG experiment; keep it
     log(f"Chosen: xi={cfg['xi']} ridge={cfg['ridge']} blend weights 1X2={cfg['blend']['w_1x2']} O2.5={cfg['blend']['w_o25']}")
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
@@ -372,6 +384,12 @@ def run(out_dir: Path, log=print) -> dict:
     cfg["link"] = {top: r["adopt"] for top, r in res["link_test"].items()}
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
     res["config"] = cfg
+    # Results of the separate one-off experiments (xG, team news) are kept across re-runs.
+    acc = out_dir / "accuracy.json"
+    prev_res = json.loads(acc.read_text(encoding="utf-8")) if acc.exists() else {}
+    for k in ("xg_test", "injury_test"):
+        if k in prev_res:
+            res[k] = prev_res[k]
     res["configs_tried"] = tried
     res["block_days"] = BLOCK_DAYS
     res["runtime_s"] = round(time.time() - t0, 1)

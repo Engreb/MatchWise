@@ -1,0 +1,37 @@
+{
+ "source": "API-Football injuries (players listed as missing), relative to each team's season average",
+ "fit_season": "2022\u201323",
+ "test_seasons": [
+  "2023\u201324",
+  "2024\u201325"
+ ],
+ "leagues": [
+  "Premier League",
+  "La Liga",
+  "Serie A",
+  "Bundesliga",
+  "Ligue 1"
+ ],
+ "b": 0.017191260508753387,
+ "goal_effect_pct_per_player": 1.7339880662134988,
+ "n_fit": 1826,
+ "n_test": 3504,
+ "avg_missing": 3.365572232645403,
+ "x12": {
+  "mean": -0.0017885721503472503,
+  "lo": -0.00360150341658876,
+  "hi": -2.9392933812752475e-05
+ },
+ "o25": {
+  "mean": -0.00045483163952723244,
+  "lo": -0.0009453155012849038,
+  "hi": 3.825663629575023e-05
+ },
+ "big_gap_matches": 1263,
+ "x12_big_gap": {
+  "mean": -0.003053205299832155,
+  "lo": -0.007576364614663727,
+  "hi": 0.0013719136758861437
+ },
+ "adopt": true
+}

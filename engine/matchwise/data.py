@@ -27,7 +27,20 @@ LEAGUES = {
     "SC0": ("scotland", "Scottish Premiership"),
     "N1": ("eredivisie", "Eredivisie"),
     "P1": ("portugal", "Primeira Liga"),
+    "E2": ("leagueone", "League One"),
+    "E3": ("leaguetwo", "League Two"),
+    "D2": ("bundesliga2", "2. Bundesliga"),
+    "I2": ("serieb", "Serie B"),
+    "SP2": ("segunda", "Segunda División"),
+    "F2": ("ligue2", "Ligue 2"),
+    "T1": ("superlig", "Süper Lig"),
+    "B1": ("belgium", "Belgian Pro League"),
+    "G1": ("greece", "Greek Super League"),
+    "SC1": ("scotchamp", "Scottish Championship"),
 }
+# Leagues the model settings are tuned on (the original nine). Leagues added later use the
+# same settings and are evaluated as fully out-of-sample.
+TUNING_DIVS = ["E0", "SP1", "I1", "D1", "F1", "E1", "SC0", "N1", "P1"]
 SEASONS = ["2021", "2122", "2223", "2324", "2425", "2526", "2627"]
 CURRENT_SEASON = SEASONS[-1]
 
@@ -36,7 +49,8 @@ FIXTURES_URL = "https://www.football-data.co.uk/fixtures.csv"
 # Full-season schedules (football-data only lists the next few days' fixtures).
 SCHEDULE_URL = "https://fixturedownload.com/feed/json/{slug}-20{yy}"
 SCHEDULE_SLUGS = {"E0": "epl", "SP1": "la-liga", "I1": "serie-a", "D1": "bundesliga", "F1": "ligue-1",
-                  "E1": "championship", "SC0": "scottish-premiership", "N1": "eredivisie", "P1": "primeira-liga"}
+                  "E1": "championship", "SC0": "scottish-premiership", "N1": "eredivisie", "P1": "primeira-liga",
+                  "E2": "efl-league-one", "E3": "efl-league-two", "F2": "ligue-2", "T1": "super-lig"}
 
 
 @dataclass
@@ -62,6 +76,8 @@ class Match:
     odds_skybet: tuple[float, float, float] | None = None
     odds_max: tuple[float, float, float] | None = None  # best pre-match price across bookmakers
     odds_b365: tuple[float, float, float] | None = None
+    odds_o25_avg: tuple[float, float] | None = None  # pre-match over/under 2.5 prices (over, under)
+    odds_o25_max: tuple[float, float] | None = None
     extra: dict = field(default_factory=dict)
 
     @property
@@ -196,6 +212,10 @@ def _row_to_match(row: dict, div: str, season: str, with_result: bool) -> Match 
     o, u = _float(row, "Avg>2.5"), _float(row, "Avg<2.5")
     if o and u:
         m.market_o25_open = implied((o, u))[0]
+        m.odds_o25_avg = (o, u)
+    o, u = _float(row, "Max>2.5"), _float(row, "Max<2.5")
+    if o and u:
+        m.odds_o25_max = (o, u)
     m.odds_skybet = _triple(row, ("SKBH", "SKBD", "SKBA"))
     m.odds_max = _triple(row, ("MaxH", "MaxD", "MaxA"))
     m.odds_b365 = _triple(row, ("B365H", "B365D", "B365A"))

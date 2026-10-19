@@ -155,6 +155,32 @@ ALIASES.update({
 })
 
 
+# League One, League Two, Ligue 2 and Süper Lig (schedule spellings). The other added leagues
+# have no full schedule source, so they only use football-data's own names.
+ALIASES.update({
+    # League One
+    "Bradford City": "Bradford", "Burton Albion": "Burton", "Cambridge United": "Cambridge",
+    "Doncaster Rovers": "Doncaster", "Huddersfield Town": "Huddersfield", "MK Dons": "Milton Keynes Dons",
+    "Mansfield Town": "Mansfield", "Peterborough United": "Peterboro", "Stockport County": "Stockport",
+    "Wigan Athletic": "Wigan", "Wycombe Wanderers": "Wycombe",
+    # League Two
+    "Accrington Stanley": "Accrington", "Bristol Rovers": "Bristol Rvs", "Cheltenham Town": "Cheltenham",
+    "Colchester United": "Colchester", "Crewe Alexandra": "Crewe", "Exeter City": "Exeter",
+    "Grimsby Town": "Grimsby", "Northampton Town": "Northampton", "Oldham Athletic": "Oldham",
+    "Rotherham United": "Rotherham", "Salford City": "Salford", "Shrewsbury Town": "Shrewsbury",
+    "Swindon Town": "Swindon", "Tranmere Rovers": "Tranmere", "York City": "York",
+    # Ligue 2
+    "AS Nancy Lorraine": "Nancy", "Clermont Foot 63": "Clermont", "Dijon FCO": "Dijon",
+    "EN Avant Guingamp": "Guingamp", "FC Annecy": "Annecy", "FC Sochaux-Montbéliard": "Sochaux",
+    "Grenoble Foot 38": "Grenoble", "Montpellier Hérault SC": "Montpellier", "Red Star FC": "Red Star",
+    "Rodez Aveyron Football": "Rodez", "Stade DE Reims": "Reims", "Stade Lavallois MFC": "Laval",
+    "US Boulogne CO": "Boulogne", "USL Dunkerque": "Dunkerque",
+    # Süper Lig
+    "Eyüpspor": "Eyupspor", "Fenerbahçe": "Fenerbahce", "Gençlerbirligi": "Genclerbirligi",
+    "Göztepe": "Goztep", "Istanbul Basaksehir": "Buyuksehyr", "Çaykur Rizespor": "Rizespor", "Çorum": "Corum",
+})
+
+
 # Understat spellings (xG history for the top five leagues).
 ALIASES.update({
     "Real Valladolid": "Valladolid", "SD Huesca": "Huesca", "Parma Calcio 1913": "Parma",

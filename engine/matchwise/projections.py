@@ -24,8 +24,25 @@ ZONES = {
     "SC0": {"title": (1, 1), "top": ("Top 4", 1, 4), "rel": ("Relegation", 12, 12)},
     "N1": {"title": (1, 1), "top": ("Top 4", 1, 4), "rel": ("Relegation", 17, 18)},
     "P1": {"title": (1, 1), "top": ("Top 4", 1, 4), "rel": ("Relegation", 17, 18)},
+    "E2": {"title": (1, 1), "top": ("Promotion", 1, 2), "playoff": ("Play-offs", 3, 6), "rel": ("Relegation", 21, 24)},
+    "E3": {"title": (1, 1), "top": ("Promotion", 1, 3), "playoff": ("Play-offs", 4, 7), "rel": ("Relegation", 23, 24)},
+    "D2": {"title": (1, 1), "top": ("Promotion", 1, 2), "playoff": ("Play-off", 3, 3), "rel": ("Relegation", 17, 18)},
+    "I2": {"title": (1, 1), "top": ("Promotion", 1, 2), "playoff": ("Play-offs", 3, 8), "rel": ("Relegation", 18, 20)},
+    "SP2": {"title": (1, 1), "top": ("Promotion", 1, 2), "playoff": ("Play-offs", 3, 6), "rel": ("Relegation", 19, 22)},
+    "F2": {"title": (1, 1), "top": ("Promotion", 1, 2), "playoff": ("Play-offs", 3, 5), "rel": ("Relegation", 17, 18)},
+    "T1": {"title": (1, 1), "top": ("Top 4", 1, 4), "rel": ("Relegation", 16, 18)},
+    "B1": {"title": (1, 1), "top": ("Top 6", 1, 6), "rel": ("Bottom 2", 17, 18)},
+    "G1": {"title": (1, 1), "top": ("Top 4", 1, 4), "rel": ("Bottom 2", 13, 14)},
+    "SC1": {"title": (1, 1), "top": ("Promotion", 1, 1), "playoff": ("Play-offs", 2, 4), "rel": ("Relegation", 10, 10)},
 }
-NOTES = {"SC0": "Projection covers the 33 games before the league splits into top and bottom six."}
+NOTES = {
+    "SC0": "Projection covers the 33 games before the league splits into top and bottom six.",
+    "B1": "Projection covers the regular season only; the title and relegation are decided in play-offs afterwards.",
+    "G1": "Projection covers the regular season only; the title and relegation are decided in play-offs afterwards.",
+}
+# Leagues with no full-season schedule source: the remaining games are every pairing not yet
+# played, assuming each team hosts every other team this many times in the (regular) season.
+ROUND_ROBIN = {"D2": 1, "I2": 1, "SP2": 1, "B1": 1, "G1": 1, "SC1": 2}
 
 
 def standings(results, teams) -> dict[str, dict]:

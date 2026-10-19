@@ -14,7 +14,7 @@ from .data import CURRENT_SEASON, LEAGUES, ROOT, Match, load_fixtures, load_resu
 from .model import DCModel, fit
 from collections import Counter
 
-from . import news, odds_api, projections
+from . import news, odds_api, pages, projections
 from .teams import canonical
 
 SNAPSHOT_DIR = ROOT / "data" / "snapshots"
@@ -331,6 +331,8 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             h, a = canonical(s_["home"], known), canonical(s_["away"], known)
             if h and a:
                 scheduled[(h, a)] += 1
+        if not scheduled and div in projections.ROUND_ROBIN:
+            scheduled = Counter({(h, a): projections.ROUND_ROBIN[div] for h in teams for a in teams if h != a})
         remaining = [pair for pair, n in scheduled.items() for _ in range(max(0, n - played[pair]))]
         proj = projections.project(div, cur, remaining, teams, model.rates)
         form = {t: [] for t in teams}
@@ -372,5 +374,6 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             "source": "football-data.co.uk",
             "odds": {"provider": "The Odds API" if budget.calls else None, "calls": budget.calls, "credits_remaining": budget.remaining}}
     (out_dir / "fixtures.json").write_text(json.dumps({**meta, "fixtures": fixture_rows}, separators=(",", ":")))
+    pages.write(out_dir.parent, fixture_rows, {l["key"]: l["name"] for l in leagues_meta}, meta["generated_at"], log)
     log(f"Wrote {len(fixture_rows)} fixtures, {len(history_rows)} history rows. Status: {status}")
     return meta

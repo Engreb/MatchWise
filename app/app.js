@@ -113,7 +113,8 @@ const topIdx = p => p.indexOf(Math.max(...p));
 const ord = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)] || 'th');
 const matchHref = (lg, h, a) => `#/match/${lg}/${encodeURIComponent(h)}/${encodeURIComponent(a)}`;
 const teamHref = (lg, t) => `#/team/${lg}/${encodeURIComponent(t)}`;
-const CC = { epl: 'ENG', championship: 'ENG', laliga: 'ESP', seriea: 'ITA', bundesliga: 'GER', ligue1: 'FRA', scotland: 'SCO', eredivisie: 'NED', portugal: 'POR' };
+const CC = { epl: 'ENG', championship: 'ENG', laliga: 'ESP', seriea: 'ITA', bundesliga: 'GER', ligue1: 'FRA', scotland: 'SCO', eredivisie: 'NED', portugal: 'POR',
+  leagueone: 'ENG', leaguetwo: 'ENG', bundesliga2: 'GER', serieb: 'ITA', segunda: 'ESP', ligue2: 'FRA', superlig: 'TUR', belgium: 'BEL', greece: 'GRE', scotchamp: 'SCO' };
 const cc = lg => `<span class="cc" aria-hidden="true">${CC[lg] || ''}</span>`;
 function ago(s) {
   const m = Math.max(0, Math.round((Date.now() - new Date(s)) / 6e4));
@@ -755,6 +756,34 @@ async function historyPage(meta) {
   </div>`;
 }
 
+function ouMoney(S, money, roi) {
+  const OU = S.over_under;
+  if (!OU || !OU.by_price) return '';
+  const best = Object.fromEntries((OU.by_price.max || []).map(x => [x.key, x]));
+  const label = x => x.key.startsWith('ou_value_') ? `“Value” over/under bets, edge ${x.key.split('_')[2]}%+` : x.label.replace(' (what the app shows)', '');
+  return `<div class="card-pad" style="border-top:1px solid var(--border);padding-bottom:4px"><h3 style="margin:0">Over/under 2.5 goals</h3><p class="small muted" style="margin:2px 0 0">£1 on every bet · same matches · bookmaker margin about ${(OU.avg_margin * 100).toFixed(1)}%</p></div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Strategy</th><th class="r hide-m">Bets</th><th class="r hide-m">Won</th><th class="r">Profit</th><th class="r">Return</th><th class="r">Best price</th></tr></thead><tbody>
+    ${OU.by_price.avg.map(x => `<tr${x.key === 'ou_adj' ? ' style="background:var(--accent-soft)"' : ''}><td style="font-weight:${x.key === 'ou_adj' ? 600 : 400}">${esc(label(x))}${x.key === 'ou_adj' ? ' <span class="small muted">(the app’s over/under lean)</span>' : ''}</td>
+      <td class="r num hide-m">${x.bets.toLocaleString('en-GB')}</td><td class="r num hide-m">${pct(x.hit_rate)}</td><td class="r num" style="white-space:nowrap">${money(x.profit)}</td><td class="r">${roi(x)}</td><td class="r">${best[x.key] ? roi(best[x.key]) : '—'}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+function goalsCard(A) {
+  if (A.ece_btts == null) return '';
+  const get = k => A.table.find(t => t.key === k);
+  const dc = get('dc'), bl = get('blend'), mo = get('market_open');
+  const f3 = v => v == null ? '—' : v.toFixed(3);
+  const lowBin = (A.calibration_o25 || []).filter(c => c.n >= 200).sort((a, b) => a.predicted - b.predicted)[0];
+  return `<div class="card" style="margin-top:12px"><div class="card-head"><h3>Goals markets</h3><span class="small muted">Over/under 2.5 and both teams to score</span></div>
+    <table><thead><tr><th>Approach</th><th class="r">Over 2.5 log loss</th><th class="r">BTTS log loss</th><th class="r">Calibration gap</th></tr></thead><tbody>
+      <tr><td>Model only</td><td class="r num">${f3(dc.o25 && dc.o25.log_loss)}</td><td class="r num">${f3(dc.btts && dc.btts.log_loss)}</td><td class="r num">${pct(A.ece_o25, 1)} / ${pct(A.ece_btts, 1)}</td></tr>
+      ${bl ? `<tr style="background:var(--accent-soft)"><td style="font-weight:600">Odds-adjusted (what the app shows)</td><td class="r num">${f3(bl.o25 && bl.o25.log_loss)}</td><td class="r num">${f3(bl.btts && bl.btts.log_loss)}</td><td class="r num">${A.ece_blend_o25 != null ? pct(A.ece_blend_o25, 1) : '—'} / —</td></tr>` : ''}
+      ${mo ? `<tr><td>Bookmaker pre-match odds</td><td class="r num">${f3(mo.o25 && mo.o25.log_loss)}</td><td class="r num">—</td><td class="r num">—</td></tr>` : ''}
+    </tbody></table>
+    <div class="card-pad" style="border-top:1px solid var(--border)"><ul class="why" style="margin:0">
+      <li>For goals markets the model on its own is <b>less well calibrated</b> than for home/draw/away (gap ${pct(A.ece_o25, 1)} for over 2.5 and ${pct(A.ece_btts, 1)} for both teams to score, against ${pct(A.ece_1x2, 1)}).${lowBin ? ` It is too sure about low-scoring games: when it gave over 2.5 about ${pct(lowBin.predicted)}, it happened ${pct(lowBin.observed)} of the time.` : ''}</li>
+      <li>Once bookmaker odds are published, the odds-adjusted figures are well calibrated and match the bookmakers. They don't beat them.</li>
+    </ul></div></div>`;
+}
 function strategyCard(S) {
   if (!S || !S.by_price) return '';
   const avg = S.by_price.avg || [], best = Object.fromEntries((S.by_price.max || []).map(x => [x.key, x]));
@@ -766,6 +795,7 @@ function strategyCard(S) {
     ${avg.map(x => `<tr${x.key === 'adj_top' ? ' style="background:var(--accent-soft)"' : ''}><td style="font-weight:${x.key === 'adj_top' ? 600 : 400}">${esc(label(x))}${x.key === 'adj_top' ? ' <span class="small muted">(the app’s top pick)</span>' : ''}</td>
       <td class="r num hide-m">${x.bets.toLocaleString('en-GB')}</td><td class="r num hide-m">${pct(x.hit_rate)}</td><td class="r num" style="white-space:nowrap">${money(x.profit)}</td><td class="r">${roi(x)}</td><td class="r">${best[x.key] ? roi(best[x.key]) : '—'}</td></tr>`).join('')}
     </tbody></table></div>
+    ${ouMoney(S, money, roi)}
     <div class="card-pad" style="border-top:1px solid var(--border)"><ul class="why" style="margin:0">
       <li><b>Every strategy lost money</b> at typical bookmaker prices. The best was backing the app’s top pick, which is almost always the bookmakers’ favourite: it lost about ${Math.abs((avg.find(x => x.key === 'adj_top') || {}).roi * 100 || 0).toFixed(1)}p per £1, a little less than the bookmakers’ average ${(S.avg_margin * 100).toFixed(1)}% margin.</li>
       <li><b>“Value” bets lost the most</b>, and the bigger the apparent edge, the bigger the loss. When the model strongly disagrees with the odds, the model is usually the one missing something (often team news).</li>
@@ -807,19 +837,21 @@ async function accuracyPage(meta) {
       <li>Its probabilities are <b>well calibrated</b>: when it says 40%, that outcome happened close to 40% of the time.</li>
       ${bl ? `<li>Combining it with <b>bookmakers' pre-match odds</b> matches the bookmakers' own accuracy. The best mix was ${Math.round(A.config.blend.w_1x2 * 100)}% bookmakers for home/draw/away and ${Math.round(A.config.blend.w_o25 * 100)}% for over/under 2.5.</li>` : ''}
       ${d.dc_vs_goals ? (A.config.alpha < 1 ? `<li>Ratings use <b>${Math.round(A.config.alpha * 100)}% goals and ${Math.round((1 - A.config.alpha) * 100)}% shots on target</b>, a small improvement over goals alone, mainly for goals markets.</li>` : `<li>Adding shots on target was tested and didn't beat goals alone.</li>`) : ''}
-      ${A.xg_test && A.xg_test.adopt ? `<li>In the top five leagues, ratings now use <b>${Math.round(A.xg_test.best[0] * 100)}% goals and ${Math.round(A.xg_test.best[2] * 100)}% xG</b> (expected goals, from Understat history). On the held-out seasons this cut log loss by ${Math.abs(A.xg_test.x12.mean).toFixed(4)} (95% interval ${Math.abs(A.xg_test.x12.hi).toFixed(4)} to ${Math.abs(A.xg_test.x12.lo).toFixed(4)}) and improved every one of the five leagues. The other four leagues keep goals + shots.</li>` : ''}
+      ${A.xg_test && A.xg_test.adopt ? `<li>In the top five leagues, ratings now use <b>${Math.round(A.xg_test.best[0] * 100)}% goals and ${Math.round(A.xg_test.best[2] * 100)}% xG</b> (expected goals, from Understat history). On the held-out seasons this cut log loss by ${Math.abs(A.xg_test.x12.mean).toFixed(4)} (95% interval ${Math.abs(A.xg_test.x12.hi).toFixed(4)} to ${Math.abs(A.xg_test.x12.lo).toFixed(4)}) and improved every one of the five leagues. The other leagues keep goals + shots.</li>` : ''}
+      ${A.injury_test ? `<li><b>Team news</b> was tested on ${A.injury_test.n_test.toLocaleString('en-GB')} past top-five matches: each extra missing player (compared with the team's usual) was worth about ${Math.abs(A.injury_test.goal_effect_pct_per_player).toFixed(1)}% of its goals. That improved model-only log loss by ${Math.abs(A.injury_test.x12.mean).toFixed(4)}, a borderline result (95% interval ${Math.abs(A.injury_test.x12.hi).toFixed(4)} to ${Math.abs(A.injury_test.x12.lo).toFixed(4)}). It isn't in the model yet: there's no free live source outside the Premier League, and the past lists may include late withdrawals that weren't known before kick-off.</li>` : ''}
       <li>Bookmakers' <b>closing</b> odds remain the most accurate (${pct(mk.x12.accuracy, 1)} top pick), because they include late team news.</li>
     </ul></div>
+    ${goalsCard(A)}
     ${strategyCard(STRAT)}
     <div class="grid-2" style="margin-top:12px">
       <div class="card card-pad"><h3 style="margin-bottom:2px">Calibration</h3><p class="small muted" style="margin:0 0 10px">Closer to the dashed line is better.</p>${chart}</div>
       <div class="card"><div class="card-head"><h3>By league</h3><span class="small muted">Log loss</span></div><table><thead><tr><th>League</th><th class="r">Model</th><th class="r">Bookmakers</th><th class="r">Top pick</th></tr></thead><tbody>
-        ${A.by_league.map(l => `<tr><td>${esc(l.name)}</td><td class="r num">${f3(l.dc.log_loss)}</td><td class="r num">${f3(l.market.log_loss)}</td><td class="r num">${pct(l.dc.accuracy)}</td></tr>`).join('')}
-      </tbody></table></div>
+        ${A.by_league.map(l => `<tr><td>${esc(l.name)}${l.tuned_on === false ? ' <span class="muted" title="Not used to tune the model: a fully out-of-sample test">*</span>' : ''}</td><td class="r num">${f3(l.dc.log_loss)}</td><td class="r num">${f3(l.market.log_loss)}</td><td class="r num">${pct(l.dc.accuracy)}</td></tr>`).join('')}
+      </tbody></table>${A.by_league.some(l => l.tuned_on === false) ? '<p class="small muted" style="margin:0;padding:8px 14px 12px">* Added later and never used for tuning, so a fully out-of-sample test.</p>' : ''}</div>
     </div>
     <details class="card" style="margin-top:12px"><summary>How this was tested</summary><div class="card-pad"><ul class="why">
       <li>Each test season was replayed week by week. Before every week the model was refitted using only results from before that week.</li>
-      <li>Settings were chosen on ${A.validation_seasons.join(', ')} only (${A.configs_tried.length} combinations tried); the test seasons were never used for tuning.</li>
+      <li>Settings were chosen on ${A.validation_seasons.join(', ')} only${A.tuning_leagues ? `, in the original ${A.tuning_leagues.length} leagues` : ''} (${A.configs_tried.length} combinations tried); the test seasons were never used for tuning.</li>
       <li>Bookmaker comparisons use average odds across bookmakers with the margin removed.</li>
       <li>Promoted teams start from the average rating of the teams they replaced.${A.link_test && A.link_test.E0 ? ` Rating Premier League newcomers from their Championship results instead was tested and ${A.link_test.E0.adopt ? 'adopted' : 'not adopted: it was no better'} (log loss change ${A.link_test.E0.test.all.mean >= 0 ? '+' : ''}${A.link_test.E0.test.all.mean.toFixed(4)} on the test seasons).` : ''}</li>
       <li>Accuracy differs by league: more even leagues such as the Championship are harder for everyone, bookmakers included.</li>

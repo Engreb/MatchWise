@@ -11,3 +11,10 @@ secrets.env*
 # planning documents kept local
 Football_Prediction_App_Codex_Complete_Build_Pack.md
 Universal_App_Development_Master_Prompt.md
+
+# static match pages and sitemap: rebuilt on every update (in CI before deploying)
+app/m/
+app/sitemap.xml
+
+# API-Football downloads for the one-off team-news test (re-fetched on demand)
+engine/data/raw/apifootball/
