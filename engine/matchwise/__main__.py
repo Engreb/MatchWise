@@ -1,4 +1,4 @@
-"""Command line: python -m matchwise [download|backtest|update|all|strategies|injuries]"""
+"""Command line: python -m matchwise [download|backtest|update|all|strategies|injuries|totals]"""
 import argparse
 from pathlib import Path
 
@@ -9,7 +9,7 @@ APP_DATA = Path(__file__).resolve().parents[2] / "app" / "data"
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="matchwise")
-    ap.add_argument("command", choices=["download", "backtest", "update", "all", "strategies", "injuries"],
+    ap.add_argument("command", choices=["download", "backtest", "update", "all", "strategies", "injuries", "totals"],
                     help="download: fetch data · backtest: tune + validate (slow) · update: refresh predictions · all: everything")
     ap.add_argument("--offline", action="store_true", help="skip downloading; use cached files")
     args = ap.parse_args()
@@ -24,6 +24,8 @@ def main() -> None:
         strategies.run(APP_DATA)
     if args.command == "injuries":
         injuries.run(APP_DATA)  # one-off test of whether team news improves predictions
+    if args.command == "totals":
+        backtest.run_totals(APP_DATA)  # one-off test of pulling total goals towards the league average
     if args.command in ("update", "all"):
         print("Fitting current models…")
         pipeline.run(APP_DATA, offline=args.offline)

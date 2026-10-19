@@ -27,7 +27,8 @@ def collect(log=print) -> list[dict]:
         ms = load_results(div)
         for season in TEST:
             log(f"  replaying {div} {season}")
-            for m, p, _, _ in replay(ms, season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div)):
+            for m, p, _, _ in replay(ms, season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div),
+                                     total_shrink=cfg.get("total_shrink", 0.0)):
                 if not (m.odds_avg and m.market_open):
                     continue
                 model = [p.home, p.draw, p.away]

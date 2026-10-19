@@ -148,3 +148,12 @@ def test_joint_fit_places_promoted_team_on_top_division_scale():
     lo = top_only.attack[top_only.index(ranked[1])]
     hi = top_only.attack[top_only.index(ranked[-2])]
     assert lo < pri["P"][0] < hi
+
+
+def test_shrink_total_moves_total_and_keeps_split():
+    from matchwise.model import shrink_total
+    lam, mu = shrink_total(1.0, 0.5, 2.7, 0.1)
+    assert abs((lam + mu) - (1.5 + 0.1 * 1.2)) < 1e-12
+    assert abs(lam / mu - 2.0) < 1e-12
+    assert shrink_total(1.0, 0.5, None, 0.1) == (1.0, 0.5)
+    assert shrink_total(1.0, 0.5, 2.7, 0.0) == (1.0, 0.5)

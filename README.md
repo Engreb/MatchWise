@@ -38,8 +38,8 @@ A personal football prediction app covering 19 European leagues: the top five (P
 
 | | Log loss | Top pick correct | Over 2.5 log loss |
 |---|---|---|---|
-| Model only | 1.014 | 49.3% | 0.686 |
-| Model only, goals-based ratings | 1.017 | 49.2% | 0.690 |
+| Model only | 1.014 | 49.3% | 0.685 |
+| Model only, goals-based ratings | 1.017 | 49.2% | 0.688 |
 | Model + pre-match odds (odds-adjusted) | 0.999 | 50.8% | 0.679 |
 | Bookmaker pre-match odds | 0.998 | 50.8% | 0.678 |
 | Bookmaker closing odds | 0.995 | 51.2% | 0.676 |
@@ -47,7 +47,7 @@ A personal football prediction app covering 19 European leagues: the top five (P
 
 Settings are tuned on 2023–24 in the original nine leagues only; the ten leagues added in October 2026 are a fully out-of-sample test. Lower divisions are harder for everyone, which is why these figures are lower than the earlier nine-league numbers (0.988 log loss, 52.3% top pick).
 
-Home/draw/away probabilities are well calibrated (average gap 0.7%). Over/under 2.5 and both-teams-to-score from the model alone are less so (gaps 2.6% and 2.3%): it is too sure about low-scoring games. Once odds are published, the odds-adjusted goals figures are well calibrated (0.8%).
+Home/draw/away probabilities are well calibrated (average gap 0.7%). Over/under 2.5 and both-teams-to-score from the model alone are less so (gaps 2.0% and 2.0%): it is too sure about low-scoring games. Pulling each match's expected total goals 10% of the way towards the league's average over the past year (chosen on 2023–24) narrowed those gaps from 2.6% and 2.3% and cut held-out log loss by 0.0007 (over 2.5) and 0.0005 (both teams to score), both 95% intervals below zero, with home/draw/away unchanged; a bigger pull made log loss worse, so the gap isn't fully closed. Once odds are published, the odds-adjusted goals figures are well calibrated (0.8%).
 
 **Betting:** every strategy tested lost money at typical prices, for 1X2 and for over/under 2.5 (the app's top pick −4.5%, its over/under lean −6.2%, "value" bets worse). The predictions are for understanding matches, not choosing bets.
 

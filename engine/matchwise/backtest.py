@@ -17,7 +17,7 @@ import numpy as np
 
 from .data import LEAGUES, ROOT, SEASONS, TUNING_DIVS, UNDERSTAT_LEAGUES, Match, load_results
 from .blend import blended_prediction, tune_weights
-from .model import DCModel, fit, linked_priors, prediction, promoted_priors
+from .model import DCModel, fit, linked_priors, prediction, promoted_priors, shrink_total
 
 VALIDATION = ["2324"]
 TEST = ["2425", "2526"]
@@ -109,7 +109,7 @@ def mix_for(cfg, div):
     return (a, 1 - a, 0.0)
 
 
-def fit_current(matches, cutoff, cfg, teams, priors):
+def _fit_mixed(matches, cutoff, cfg, teams, priors):
     """Fit with the configured goals/shots mix. Goal rates come from the mix; the low-score
     correction comes from actual goals (it describes scorelines, not chance creation)."""
     mix = mix_for(cfg, matches[0].div)
@@ -118,6 +118,19 @@ def fit_current(matches, cutoff, cfg, teams, priors):
     m = fit(mix_targets(matches, mix, cutoff), cutoff, cfg["xi"], cfg["ridge"], teams=teams, priors=priors, fix_rho=True)
     m.rho = fit(matches, cutoff, cfg["xi"], cfg["ridge"], teams=teams, priors=priors).rho
     return m
+
+
+def fit_current(matches, cutoff, cfg, teams, priors):
+    """Fit with the configured ratings mix and pull of expected total goals towards the league average."""
+    m = _fit_mixed(matches, cutoff, cfg, teams, priors)
+    m.total_target, m.total_shrink = league_total(matches, cutoff), cfg.get("total_shrink", 0.0)
+    return m
+
+
+def league_total(matches, cutoff, days=365):
+    """Average goals per game in the league over the `days` before `cutoff`."""
+    recent = [m.hg + m.ag for m in matches if m.played and m.date < cutoff and (cutoff - m.date).days <= days]
+    return float(np.mean(recent)) if recent else None
 
 
 def _baseline(matches, cutoff):
@@ -131,7 +144,7 @@ def _baseline(matches, cutoff):
 
 
 def replay(matches, season, xi, ridge, *, alpha=1.0, mix=None, fix_rho=False, with_baseline=False,
-           extra_teams=(), feeder=None):
+           extra_teams=(), feeder=None, total_shrink=0.0):
     """Yield (match, prediction, model, baseline) for every played match in `season`."""
     teams, priors, rho = preseason_priors(matches, season, xi, ridge, extra_teams, feeder)
     played = [m for m in matches if m.season == season and m.played]
@@ -147,6 +160,8 @@ def replay(matches, season, xi, ridge, *, alpha=1.0, mix=None, fix_rho=False, wi
             model.rho = 0.0 if fix_rho else rho
         else:
             model = fit(matches, start, xi, ridge, teams=teams, priors=priors, fix_rho=fix_rho, init=model)
+        if total_shrink:
+            model.total_target, model.total_shrink = league_total(matches, start), total_shrink
         base = _baseline(matches, start) if with_baseline else None
         end = start + timedelta(days=BLOCK_DAYS)
         while i < len(played) and played[i].date < end:
@@ -278,14 +293,17 @@ def tune(data: dict[str, list[Match]], log=print) -> tuple[dict, list[dict], lis
 def evaluate(data, cfg, log=print) -> dict:
     dc_rows, pois_rows, goal_rows = [], [], []
     g = cfg["goals_only"]
+    ts = cfg.get("total_shrink", 0.0)
     for div, matches in data.items():
         for season in TEST:
             log(f"  test replay {div} {season}")
             dc_rows += [record(m, p, b) for m, p, _, b in
-                        replay(matches, season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), with_baseline=True)]
+                        replay(matches, season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), with_baseline=True,
+                               total_shrink=ts)]
             pois_rows += [record(m, p) for m, p, _, _ in
-                          replay(matches, season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), fix_rho=True)]
-            goal_rows += [record(m, p) for m, p, _, _ in replay(matches, season, g["xi"], g["ridge"])]
+                          replay(matches, season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), fix_rho=True,
+                                 total_shrink=ts)]
+            goal_rows += [record(m, p) for m, p, _, _ in replay(matches, season, g["xi"], g["ridge"], total_shrink=ts)]
     for r, q, gr in zip(dc_rows, pois_rows, goal_rows):
         assert (r["home"], r["date"]) == (q["home"], q["date"]) == (gr["home"], gr["date"])
         r["pois"] = q["p"]; r["pois_o25"] = q["o25"]; r["pois_btts"] = q["btts"]
@@ -374,6 +392,8 @@ def run(out_dir: Path, log=print) -> dict:
     cfg["blend"] = tune_weights([r for r in val_rows], ll_1x2, ll_bin, is_over)
     if prev.get("mix_xg"):
         cfg["mix_xg"] = prev["mix_xg"]  # adopted by the separate xG experiment; keep it
+    if prev.get("total_shrink"):
+        cfg["total_shrink"] = prev["total_shrink"]  # adopted by the separate totals experiment; keep it
     log(f"Chosen: xi={cfg['xi']} ridge={cfg['ridge']} blend weights 1X2={cfg['blend']['w_1x2']} O2.5={cfg['blend']['w_o25']}")
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
@@ -384,10 +404,10 @@ def run(out_dir: Path, log=print) -> dict:
     cfg["link"] = {top: r["adopt"] for top, r in res["link_test"].items()}
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
     res["config"] = cfg
-    # Results of the separate one-off experiments (xG, team news) are kept across re-runs.
+    # Results of the separate one-off experiments (xG, team news, total goals) are kept across re-runs.
     acc = out_dir / "accuracy.json"
     prev_res = json.loads(acc.read_text(encoding="utf-8")) if acc.exists() else {}
-    for k in ("xg_test", "injury_test"):
+    for k in ("xg_test", "injury_test", "totals_test"):
         if k in prev_res:
             res[k] = prev_res[k]
     res["configs_tried"] = tried
@@ -481,4 +501,102 @@ def xg_experiment(data, cfg, log=print) -> dict:
     log(f"  best {best} vs current {current}: test log loss change 1X2 {res['x12']['mean']:+.4f} "
         f"(95% {res['x12']['lo']:+.4f} to {res['x12']['hi']:+.4f}), O2.5 {res['o25']['mean']:+.4f}, "
         f"BTTS {res['btts']['mean']:+.4f} -> {verdict}")
+    return res
+
+
+TOTAL_SHRINKS = (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8)
+
+
+def totals_experiment(data, cfg, log=print) -> dict:
+    """Does pulling each match's expected total goals towards the league's recent average fix the
+    over/under and both-teams-to-score calibration? The pull is chosen on the validation season
+    (tuning leagues only) and confirmed on the test seasons across every league."""
+    def rows_for(divs, seasons):
+        out = []
+        for d in divs:
+            for season in seasons:
+                cache = {}
+                for m, p, model, _ in replay(data[d], season, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, d)):
+                    if model.cutoff not in cache:
+                        cache[model.cutoff] = league_total(data[d], model.cutoff)
+                    r = record(m, p)
+                    r["target"] = cache[model.cutoff]
+                    out.append(r)
+        return out
+
+    def shrunk(rows, s):
+        out = []
+        for r in rows:
+            q = prediction(*shrink_total(r["lam"], r["mu"], r["target"], s), r["rho"])
+            out.append({**r, "p": [q.home, q.draw, q.away], "o25": q.over(2.5), "btts": q.btts})
+        return out
+
+    ll1 = lambda rs: [ll_1x2(r["p"], r["outcome"]) for r in rs]
+    llo = lambda rs: [ll_bin(r["o25"], is_over(r)) for r in rs]
+    llb = lambda rs: [ll_bin(r["btts"], is_btts(r)) for r in rs]
+    objective = lambda rs: float(np.mean(ll1(rs)) + np.mean(llo(rs)) + np.mean(llb(rs)))
+
+    val = rows_for([d for d in TUNING_DIVS if d in data], VALIDATION)
+    tried = []
+    for s in TOTAL_SHRINKS:
+        rs = shrunk(val, s)
+        tried.append({"shrink": s, "objective": objective(rs), "x12": float(np.mean(ll1(rs))),
+                      "o25": float(np.mean(llo(rs))), "btts": float(np.mean(llb(rs)))})
+        log(f"  shrink {s}: validation objective {tried[-1]['objective']:.4f}")
+    best = min(tried, key=lambda t: t["objective"])["shrink"]
+
+    test = rows_for(list(data), TEST)
+    base_rows, best_rows = shrunk(test, 0.0), shrunk(test, best)
+    ece = lambda rs, k, f: calibration([(r[k], int(f(r))) for r in rs])[1]
+    ece12 = lambda rs: calibration([(r["p"][k], int(r["outcome"] == k)) for r in rs for k in range(3)])[1]
+    res = {
+        "best": best, "tried": tried, "n_validation": len(val), "n_test": len(test),
+        "x12": bootstrap_diff(ll1(best_rows), ll1(base_rows)),
+        "o25": bootstrap_diff(llo(best_rows), llo(base_rows)),
+        "btts": bootstrap_diff(llb(best_rows), llb(base_rows)),
+        "ece_before": {"x12": ece12(base_rows), "o25": ece(base_rows, "o25", is_over), "btts": ece(base_rows, "btts", is_btts)},
+        "ece_after": {"x12": ece12(best_rows), "o25": ece(best_rows, "o25", is_over), "btts": ece(best_rows, "btts", is_btts)},
+        "by_group": {},
+        "by_league": {},
+    }
+    for group, divs in (("tuning_leagues", set(TUNING_DIVS)), ("other_leagues", set(data) - set(TUNING_DIVS))):
+        a = [r for r in base_rows if r["div"] in divs]
+        b = [r for r in best_rows if r["div"] in divs]
+        res["by_group"][group] = {"n": len(a), "x12": bootstrap_diff(ll1(b), ll1(a)),
+                                  "o25": bootstrap_diff(llo(b), llo(a)), "btts": bootstrap_diff(llb(b), llb(a))}
+    for d in data:
+        a = [r for r in base_rows if r["div"] == d]
+        b = [r for r in best_rows if r["div"] == d]
+        res["by_league"][LEAGUES[d][0]] = {"name": LEAGUES[d][1], "n": len(a), "tuned_on": d in TUNING_DIVS,
+                                           "x12_change": float(np.mean(ll1(b)) - np.mean(ll1(a))),
+                                           "o25_change": float(np.mean(llo(b)) - np.mean(llo(a))),
+                                           "btts_change": float(np.mean(llb(b)) - np.mean(llb(a)))}
+    # Pre-registered rule: adopt only if O/U and BTTS both improve on test and 1X2 does not get worse.
+    res["adopt"] = best > 0 and res["o25"]["mean"] < 0 and res["btts"]["mean"] < 0 and res["x12"]["mean"] <= 0
+    verdict = "ADOPT" if res["adopt"] else "keep current"
+    log(f"  shrink {best}: test log loss change 1X2 {res['x12']['mean']:+.4f} "
+        f"(95% {res['x12']['lo']:+.4f} to {res['x12']['hi']:+.4f}), O2.5 {res['o25']['mean']:+.4f} "
+        f"(95% {res['o25']['lo']:+.4f} to {res['o25']['hi']:+.4f}), BTTS {res['btts']['mean']:+.4f} "
+        f"(95% {res['btts']['lo']:+.4f} to {res['btts']['hi']:+.4f}) -> {verdict}")
+    log(f"  calibration error O2.5 {res['ece_before']['o25']:.4f} -> {res['ece_after']['o25']:.4f}, "
+        f"BTTS {res['ece_before']['btts']:.4f} -> {res['ece_after']['btts']:.4f}, "
+        f"1X2 {res['ece_before']['x12']:.4f} -> {res['ece_after']['x12']:.4f}")
+    return res
+
+
+def run_totals(out_dir: Path, log=print) -> dict:
+    """Run the total-goals experiment once, store its result in accuracy.json and adopt or drop the
+    pull in model_config.json. Re-run `backtest` afterwards so the headline figures include it."""
+    data = {div: load_results(div) for div in LEAGUES}
+    cfg = load_config()
+    log("Testing a pull of expected total goals towards the league average…")
+    res = totals_experiment(data, cfg, log)
+    cfg.pop("total_shrink", None)
+    if res["adopt"]:
+        cfg["total_shrink"] = res["best"]
+    CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
+    acc = out_dir / "accuracy.json"
+    full = json.loads(acc.read_text(encoding="utf-8")) if acc.exists() else {}
+    full["totals_test"] = res
+    acc.write_text(json.dumps(full, indent=1))
     return res

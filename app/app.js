@@ -781,8 +781,15 @@ function goalsCard(A) {
     </tbody></table>
     <div class="card-pad" style="border-top:1px solid var(--border)"><ul class="why" style="margin:0">
       <li>For goals markets the model on its own is <b>less well calibrated</b> than for home/draw/away (gap ${pct(A.ece_o25, 1)} for over 2.5 and ${pct(A.ece_btts, 1)} for both teams to score, against ${pct(A.ece_1x2, 1)}).${lowBin ? ` It is too sure about low-scoring games: when it gave over 2.5 about ${pct(lowBin.predicted)}, it happened ${pct(lowBin.observed)} of the time.` : ''}</li>
+      ${totalsNote(A.totals_test)}
       <li>Once bookmaker odds are published, the odds-adjusted figures are well calibrated and match the bookmakers. They don't beat them.</li>
     </ul></div></div>`;
+}
+function totalsNote(T) {
+  if (!T) return '';
+  const ci = d => `95% interval ${Math.abs(d.hi).toFixed(4)} to ${Math.abs(d.lo).toFixed(4)}`;
+  if (!T.adopt) return `<li>Pulling each match's expected goals towards the league average was tested and didn't help on the held-out seasons, so it isn't used.</li>`;
+  return `<li>Each match's expected total goals is <b>pulled ${Math.round(T.best * 100)}% of the way towards the league's average</b> over the past year (chosen on 2023–24). On the held-out seasons this cut log loss by ${Math.abs(T.o25.mean).toFixed(4)} for over 2.5 (${ci(T.o25)}) and ${Math.abs(T.btts.mean).toFixed(4)} for both teams to score (${ci(T.btts)}), with home/draw/away unchanged. It narrows the calibration gap (over 2.5 ${pct(T.ece_before.o25, 1)} → ${pct(T.ece_after.o25, 1)}, both teams to score ${pct(T.ece_before.btts, 1)} → ${pct(T.ece_after.btts, 1)}) but doesn't close it; a bigger pull made log loss worse.</li>`;
 }
 function strategyCard(S) {
   if (!S || !S.by_price) return '';

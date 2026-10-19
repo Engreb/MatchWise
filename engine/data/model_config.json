@@ -62,6 +62,7 @@
     0.0,
     0.5
   ],
+  "total_shrink": 0.1,
   "link": {
     "E0": false
   }

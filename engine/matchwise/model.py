@@ -36,6 +36,10 @@ class DCModel:
     prior_teams: set[str] = field(default_factory=set)
     converged: bool = True
     theta: np.ndarray | None = None
+    # Expected total goals are pulled `total_shrink` of the way to `total_target` (the league's
+    # recent goals per game); 0 leaves the fitted rates unchanged.
+    total_target: float | None = None
+    total_shrink: float = 0.0
 
     def index(self, team: str) -> int:
         return self.teams.index(team)
@@ -44,11 +48,19 @@ class DCModel:
         h, a = self.index(home), self.index(away)
         lam = math.exp(self.intercept + self.home_adv + self.attack[h] + self.defence[a])
         mu = math.exp(self.intercept + self.attack[a] + self.defence[h])
-        return lam, mu
+        return shrink_total(lam, mu, self.total_target, self.total_shrink)
 
     def predict(self, home: str, away: str) -> "Prediction":
         lam, mu = self.rates(home, away)
         return prediction(lam, mu, self.rho)
+
+
+def shrink_total(lam: float, mu: float, target: float | None, s: float) -> tuple[float, float]:
+    """Move lam + mu a fraction `s` of the way towards `target`, keeping the home/away split."""
+    if not s or target is None:
+        return lam, mu
+    k = (1 - s) + s * target / (lam + mu)
+    return lam * k, mu * k
 
 
 def tau(x: int, y: int, lam: float, mu: float, rho: float) -> float:

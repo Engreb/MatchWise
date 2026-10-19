@@ -303,7 +303,8 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             for t in teams:
                 trend[t].append(_r(strength(mdl, t)) if t in mdl.teams else None)
 
-        for m, p, mdl, _ in replay(matches, CURRENT_SEASON, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), feeder=feeder):
+        for m, p, mdl, _ in replay(matches, CURRENT_SEASON, cfg["xi"], cfg["ridge"], mix=mix_for(cfg, div), feeder=feeder,
+                                    total_shrink=cfg.get("total_shrink", 0.0)):
             if not trend_dates or trend_dates[-1] != mdl.cutoff.isoformat():
                 add_trend(mdl)  # one point per weekly refit: how each team's rating moved this season
             r = record(m, p)
