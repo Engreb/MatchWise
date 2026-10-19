@@ -65,5 +65,34 @@
   "total_shrink": 0.1,
   "link": {
     "E0": false
+  },
+  "stats": {
+    "shots": {
+      "xi": 0.008,
+      "ridge": 40.0,
+      "show": true
+    },
+    "sot": {
+      "xi": 0.005,
+      "ridge": 15.0,
+      "show": true
+    },
+    "corners": {
+      "xi": 0.003,
+      "ridge": 40.0,
+      "show": true
+    },
+    "fouls": {
+      "xi": 0.008,
+      "ridge": 40.0,
+      "show": true
+    },
+    "yellows": {
+      "xi": 0.008,
+      "ridge": 15.0,
+      "closeness": true,
+      "referee": true,
+      "show": true
+    }
   }
 }

@@ -394,6 +394,8 @@ def run(out_dir: Path, log=print) -> dict:
         cfg["mix_xg"] = prev["mix_xg"]  # adopted by the separate xG experiment; keep it
     if prev.get("total_shrink"):
         cfg["total_shrink"] = prev["total_shrink"]  # adopted by the separate totals experiment; keep it
+    if prev.get("stats"):
+        cfg["stats"] = prev["stats"]  # match-stats settings from `matchwise stats`; keep them
     log(f"Chosen: xi={cfg['xi']} ridge={cfg['ridge']} blend weights 1X2={cfg['blend']['w_1x2']} O2.5={cfg['blend']['w_o25']}")
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
@@ -407,7 +409,7 @@ def run(out_dir: Path, log=print) -> dict:
     # Results of the separate one-off experiments (xG, team news, total goals) are kept across re-runs.
     acc = out_dir / "accuracy.json"
     prev_res = json.loads(acc.read_text(encoding="utf-8")) if acc.exists() else {}
-    for k in ("xg_test", "injury_test", "totals_test"):
+    for k in ("xg_test", "injury_test", "totals_test", "stats_test"):
         if k in prev_res:
             res[k] = prev_res[k]
     res["configs_tried"] = tried
@@ -599,4 +601,22 @@ def run_totals(out_dir: Path, log=print) -> dict:
     full = json.loads(acc.read_text(encoding="utf-8")) if acc.exists() else {}
     full["totals_test"] = res
     acc.write_text(json.dumps(full, indent=1))
+    return res
+
+
+def run_stats(out_dir: Path, log=print) -> dict:
+    """Tune and test the match-stats models (shots, corners, fouls, cards); see stats.py."""
+    from . import stats
+    cfg = load_config()
+    data = {div: load_results(div) for div in LEAGUES}
+    log("Match stats: tuning on validation, testing on held-out seasons…")
+    res = stats.run(data, cfg, log)
+    cfg["stats"] = res["config"]
+    CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
+    acc = out_dir / "accuracy.json"
+    if acc.exists():
+        a = json.loads(acc.read_text(encoding="utf-8"))
+        a["stats_test"] = res
+        acc.write_text(json.dumps(a, indent=1), encoding="utf-8")
+    log(f"Done in {res['runtime_s']}s.")
     return res

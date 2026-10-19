@@ -65,6 +65,15 @@ class Match:
     ag: int | None = None
     hst: int | None = None  # shots on target
     ast: int | None = None
+    hs: int | None = None  # total shots
+    as_: int | None = None
+    hf: int | None = None  # fouls
+    af: int | None = None
+    hc: int | None = None  # corners
+    ac: int | None = None
+    hy: int | None = None  # yellow cards
+    ay: int | None = None
+    referee: str | None = None  # British leagues only
     hxg: float | None = None  # expected goals (football-data this season, Understat before)
     axg: float | None = None
     # Margin-free implied probabilities from average bookmaker odds, when available.
@@ -202,6 +211,15 @@ def _row_to_match(row: dict, div: str, season: str, with_result: bool) -> Match 
             m.hst, m.ast = int(row["HST"]), int(row["AST"])
         except (KeyError, ValueError, TypeError):
             pass
+        for hk, ak, hf_, af_ in (("HS", "AS", "hs", "as_"), ("HF", "AF", "hf", "af"),
+                                 ("HC", "AC", "hc", "ac"), ("HY", "AY", "hy", "ay")):
+            try:
+                setattr(m, hf_, int(row[hk]))
+                setattr(m, af_, int(row[ak]))
+            except (KeyError, ValueError, TypeError):
+                setattr(m, hf_, None)
+                setattr(m, af_, None)
+    m.referee = (row.get("Referee") or "").strip() or None
     avg = _triple(row, ("AvgH", "AvgD", "AvgA"))
     m.odds_avg = avg
     m.market_open = implied(avg)

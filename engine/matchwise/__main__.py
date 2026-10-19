@@ -1,4 +1,4 @@
-"""Command line: python -m matchwise [download|backtest|update|all|strategies|injuries|totals]"""
+"""Command line: python -m matchwise [download|backtest|update|all|strategies|injuries|totals|stats]"""
 import argparse
 from pathlib import Path
 
@@ -9,7 +9,7 @@ APP_DATA = Path(__file__).resolve().parents[2] / "app" / "data"
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="matchwise")
-    ap.add_argument("command", choices=["download", "backtest", "update", "all", "strategies", "injuries", "totals"],
+    ap.add_argument("command", choices=["download", "backtest", "update", "all", "strategies", "injuries", "totals", "stats"],
                     help="download: fetch data · backtest: tune + validate (slow) · update: refresh predictions · all: everything")
     ap.add_argument("--offline", action="store_true", help="skip downloading; use cached files")
     args = ap.parse_args()
@@ -20,6 +20,8 @@ def main() -> None:
     if args.command in ("backtest", "all"):
         backtest.run(APP_DATA)
         strategies.run(APP_DATA)  # keep the money backtest in step with the re-tuned model
+    if args.command in ("stats", "all"):
+        backtest.run_stats(APP_DATA)  # shots, corners, fouls and yellow cards
     if args.command == "strategies":
         strategies.run(APP_DATA)
     if args.command == "injuries":

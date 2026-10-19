@@ -14,7 +14,7 @@ from .data import CURRENT_SEASON, LEAGUES, ROOT, Match, load_fixtures, load_resu
 from .model import DCModel, fit
 from collections import Counter
 
-from . import news, odds_api, pages, projections
+from . import news, odds_api, pages, projections, stats
 from .teams import canonical
 
 SNAPSHOT_DIR = ROOT / "data" / "snapshots"
@@ -238,6 +238,13 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
         }, separators=(",", ":")))
         (out_dir / f"pairs-{key}.json").write_text(json.dumps({"key": key, "pair_fields": PAIR_FIELDS, "pairs": pairs},
                                                               separators=(",", ":")))
+        # Match stats (shots, corners, fouls, cards), for the stats the backtest showed are worth showing.
+        sp = stats.league_payload(matches, cfg.get("stats", {}), cutoff, teams, CURRENT_SEASON, model, fx)
+        stats_path = out_dir / f"stats-{key}.json"
+        if sp:
+            stats_path.write_text(json.dumps({"key": key, **sp}, separators=(",", ":")))
+        elif stats_path.exists():
+            stats_path.unlink()
         if key == "epl":
             epl_teams = set(teams)
         leagues_meta.append({"key": key, "name": name, "data_through": last.isoformat(),

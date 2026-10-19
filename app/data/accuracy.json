@@ -2058,5 +2058,1399 @@
   }
  ],
  "block_days": 7,
- "runtime_s": 388.7
+ "runtime_s": 388.7,
+ "stats_test": {
+  "stats": {
+   "shots": {
+    "label": "Shots",
+    "tried": [
+     {
+      "xi": 0.002,
+      "ridge": 5.0,
+      "log_score": 3.1733945231315284
+     },
+     {
+      "xi": 0.002,
+      "ridge": 15.0,
+      "log_score": 3.1712870391764447
+     },
+     {
+      "xi": 0.002,
+      "ridge": 40.0,
+      "log_score": 3.17045526153717
+     },
+     {
+      "xi": 0.002,
+      "ridge": 100.0,
+      "log_score": 3.1736322020897947
+     },
+     {
+      "xi": 0.003,
+      "ridge": 5.0,
+      "log_score": 3.167366424001248
+     },
+     {
+      "xi": 0.003,
+      "ridge": 15.0,
+      "log_score": 3.165085321937384
+     },
+     {
+      "xi": 0.003,
+      "ridge": 40.0,
+      "log_score": 3.1646064048741995
+     },
+     {
+      "xi": 0.003,
+      "ridge": 100.0,
+      "log_score": 3.169809051226173
+     },
+     {
+      "xi": 0.005,
+      "ridge": 5.0,
+      "log_score": 3.1625255597370328
+     },
+     {
+      "xi": 0.005,
+      "ridge": 15.0,
+      "log_score": 3.1591963030947747
+     },
+     {
+      "xi": 0.005,
+      "ridge": 40.0,
+      "log_score": 3.158838527040089
+     },
+     {
+      "xi": 0.005,
+      "ridge": 100.0,
+      "log_score": 3.16754212422548
+     },
+     {
+      "xi": 0.008,
+      "ridge": 5.0,
+      "log_score": 3.1631561721371764
+     },
+     {
+      "xi": 0.008,
+      "ridge": 15.0,
+      "log_score": 3.156883991572347
+     },
+     {
+      "xi": 0.008,
+      "ridge": 40.0,
+      "log_score": 3.156208562121953
+     },
+     {
+      "xi": 0.008,
+      "ridge": 100.0,
+      "log_score": 3.169266987775828
+     },
+     {
+      "xi": 0.012,
+      "ridge": 5.0,
+      "log_score": 3.168897004978505
+     },
+     {
+      "xi": 0.012,
+      "ridge": 15.0,
+      "log_score": 3.15744702396764
+     },
+     {
+      "xi": 0.012,
+      "ridge": 40.0,
+      "log_score": 3.1565304406059336
+     },
+     {
+      "xi": 0.012,
+      "ridge": 100.0,
+      "log_score": 3.173943846470678
+     },
+     {
+      "xi": 0.02,
+      "ridge": 5.0,
+      "log_score": 3.1854585824992494
+     },
+     {
+      "xi": 0.02,
+      "ridge": 15.0,
+      "log_score": 3.162059672767389
+     },
+     {
+      "xi": 0.02,
+      "ridge": 40.0,
+      "log_score": 3.1611992702801373
+     },
+     {
+      "xi": 0.02,
+      "ridge": 100.0,
+      "log_score": 3.1831491505429153
+     }
+    ],
+    "xi": 0.008,
+    "ridge": 40.0,
+    "n_test": 13500,
+    "avg_total": 24.61577777777778,
+    "log_score": 3.1469651462141623,
+    "log_score_base": 3.2086849898491163,
+    "vs_base": {
+     "mean": -0.061719843634954114,
+     "lo": -0.06593035714330749,
+     "hi": -0.05715701671367574
+    },
+    "team_vs_base": {
+     "mean": -0.18841810144790308,
+     "lo": -0.19844014896904186,
+     "hi": -0.17804761550515782
+    },
+    "mae": 4.477369673469096,
+    "mae_base": 4.647519058134941,
+    "ece": 0.006726254969960232,
+    "ece_base": 0.010634714063727891,
+    "calibration": [
+     {
+      "bin": [
+       0.4,
+       0.5
+      ],
+      "predicted": 0.4727704108750789,
+      "observed": 0.48003605227579993,
+      "n": 11095
+     },
+     {
+      "bin": [
+       0.5,
+       0.6
+      ],
+      "predicted": 0.5063650100817202,
+      "observed": 0.5106029106029106,
+      "n": 2405
+     }
+    ],
+    "by_league": {
+     "epl": {
+      "name": "Premier League",
+      "n": 760,
+      "change": -0.07478493427469113
+     },
+     "laliga": {
+      "name": "La Liga",
+      "n": 760,
+      "change": -0.09918333770527266
+     },
+     "seriea": {
+      "name": "Serie A",
+      "n": 760,
+      "change": -0.04876719194110546
+     },
+     "bundesliga": {
+      "name": "Bundesliga",
+      "n": 611,
+      "change": -0.06298782488007193
+     },
+     "ligue1": {
+      "name": "Ligue 1",
+      "n": 612,
+      "change": -0.05173830711256855
+     },
+     "championship": {
+      "name": "Championship",
+      "n": 1104,
+      "change": -0.044229066570931064
+     },
+     "scotland": {
+      "name": "Scottish Premiership",
+      "n": 456,
+      "change": -0.08303779570296177
+     },
+     "eredivisie": {
+      "name": "Eredivisie",
+      "n": 612,
+      "change": -0.10025057436711426
+     },
+     "portugal": {
+      "name": "Primeira Liga",
+      "n": 612,
+      "change": -0.09738693817067068
+     },
+     "leagueone": {
+      "name": "League One",
+      "n": 1104,
+      "change": -0.052820894906065785
+     },
+     "leaguetwo": {
+      "name": "League Two",
+      "n": 1104,
+      "change": -0.05406417198285185
+     },
+     "bundesliga2": {
+      "name": "2. Bundesliga",
+      "n": 612,
+      "change": -0.010135699255800823
+     },
+     "serieb": {
+      "name": "Serie B",
+      "n": 760,
+      "change": -0.047266963815812524
+     },
+     "segunda": {
+      "name": "Segunda Divisi\u00f3n",
+      "n": 924,
+      "change": -0.06163215312915771
+     },
+     "ligue2": {
+      "name": "Ligue 2",
+      "n": 611,
+      "change": -0.041311795445534205
+     },
+     "superlig": {
+      "name": "S\u00fcper Lig",
+      "n": 647,
+      "change": -0.08086800925387427
+     },
+     "belgium": {
+      "name": "Belgian Pro League",
+      "n": 622,
+      "change": -0.06345955453110097
+     },
+     "greece": {
+      "name": "Greek Super League",
+      "n": 469,
+      "change": -0.07368629188144205
+     },
+     "scotchamp": {
+      "name": "Scottish Championship",
+      "n": 360,
+      "change": -0.04853406370215696
+     }
+    },
+    "adopt": true
+   },
+   "sot": {
+    "label": "Shots on target",
+    "tried": [
+     {
+      "xi": 0.002,
+      "ridge": 5.0,
+      "log_score": 2.536710846944312
+     },
+     {
+      "xi": 0.002,
+      "ridge": 15.0,
+      "log_score": 2.535354031589997
+     },
+     {
+      "xi": 0.002,
+      "ridge": 40.0,
+      "log_score": 2.5372609528949592
+     },
+     {
+      "xi": 0.002,
+      "ridge": 100.0,
+      "log_score": 2.545063061052657
+     },
+     {
+      "xi": 0.003,
+      "ridge": 5.0,
+      "log_score": 2.5345493222782527
+     },
+     {
+      "xi": 0.003,
+      "ridge": 15.0,
+      "log_score": 2.532982676933459
+     },
+     {
+      "xi": 0.003,
+      "ridge": 40.0,
+      "log_score": 2.535808620696087
+     },
+     {
+      "xi": 0.003,
+      "ridge": 100.0,
+      "log_score": 2.545472993629841
+     },
+     {
+      "xi": 0.005,
+      "ridge": 5.0,
+      "log_score": 2.5356492142872273
+     },
+     {
+      "xi": 0.005,
+      "ridge": 15.0,
+      "log_score": 2.5329584136793435
+     },
+     {
+      "xi": 0.005,
+      "ridge": 40.0,
+      "log_score": 2.5369364732392055
+     },
+     {
+      "xi": 0.005,
+      "ridge": 100.0,
+      "log_score": 2.5483754259557525
+     },
+     {
+      "xi": 0.008,
+      "ridge": 5.0,
+      "log_score": 2.5403052021322976
+     },
+     {
+      "xi": 0.008,
+      "ridge": 15.0,
+      "log_score": 2.535556651389998
+     },
+     {
+      "xi": 0.008,
+      "ridge": 40.0,
+      "log_score": 2.5405580232297003
+     },
+     {
+      "xi": 0.008,
+      "ridge": 100.0,
+      "log_score": 2.552742613787805
+     },
+     {
+      "xi": 0.012,
+      "ridge": 5.0,
+      "log_score": 2.5463308302437007
+     },
+     {
+      "xi": 0.012,
+      "ridge": 15.0,
+      "log_score": 2.5390370316146247
+     },
+     {
+      "xi": 0.012,
+      "ridge": 40.0,
+      "log_score": 2.545092025387422
+     },
+     {
+      "xi": 0.012,
+      "ridge": 100.0,
+      "log_score": 2.557192340727128
+     },
+     {
+      "xi": 0.02,
+      "ridge": 5.0,
+      "log_score": 2.5543173678893423
+     },
+     {
+      "xi": 0.02,
+      "ridge": 15.0,
+      "log_score": 2.5449153597277103
+     },
+     {
+      "xi": 0.02,
+      "ridge": 40.0,
+      "log_score": 2.552315918459355
+     },
+     {
+      "xi": 0.02,
+      "ridge": 100.0,
+      "log_score": 2.563371566318881
+     }
+    ],
+    "xi": 0.005,
+    "ridge": 15.0,
+    "n_test": 13500,
+    "avg_total": 8.457925925925926,
+    "log_score": 2.525404711374249,
+    "log_score_base": 2.5478087021856033,
+    "vs_base": {
+     "mean": -0.022403990811354333,
+     "lo": -0.026804408532067305,
+     "hi": -0.017547469621407723
+    },
+    "team_vs_base": {
+     "mean": -0.1250814349853529,
+     "lo": -0.1332867258919113,
+     "hi": -0.11658441555923992
+    },
+    "mae": 2.4499979090139865,
+    "mae_base": 2.499883764747457,
+    "ece": 0.006914423540616694,
+    "ece_base": 0.004002347752452992,
+    "calibration": [
+     {
+      "bin": [
+       0.3,
+       0.4
+      ],
+      "predicted": 0.39864506185862253,
+      "observed": 0.5,
+      "n": 2
+     },
+     {
+      "bin": [
+       0.4,
+       0.5
+      ],
+      "predicted": 0.4546425853953596,
+      "observed": 0.4469508904479223,
+      "n": 9265
+     },
+     {
+      "bin": [
+       0.5,
+       0.6
+      ],
+      "predicted": 0.5211146832586903,
+      "observed": 0.515946137491141,
+      "n": 4233
+     }
+    ],
+    "by_league": {
+     "epl": {
+      "name": "Premier League",
+      "n": 760,
+      "change": -0.017677354387122257
+     },
+     "laliga": {
+      "name": "La Liga",
+      "n": 760,
+      "change": -0.046581569212947205
+     },
+     "seriea": {
+      "name": "Serie A",
+      "n": 760,
+      "change": -0.019530662956545708
+     },
+     "bundesliga": {
+      "name": "Bundesliga",
+      "n": 611,
+      "change": -0.03788830801870535
+     },
+     "ligue1": {
+      "name": "Ligue 1",
+      "n": 612,
+      "change": -0.02278255320831102
+     },
+     "championship": {
+      "name": "Championship",
+      "n": 1104,
+      "change": -0.00570841790595189
+     },
+     "scotland": {
+      "name": "Scottish Premiership",
+      "n": 456,
+      "change": -0.03581895453190631
+     },
+     "eredivisie": {
+      "name": "Eredivisie",
+      "n": 612,
+      "change": -0.030936162022579428
+     },
+     "portugal": {
+      "name": "Primeira Liga",
+      "n": 612,
+      "change": -0.04866658307075333
+     },
+     "leagueone": {
+      "name": "League One",
+      "n": 1104,
+      "change": -0.02042853785844878
+     },
+     "leaguetwo": {
+      "name": "League Two",
+      "n": 1104,
+      "change": -0.017381363676248984
+     },
+     "bundesliga2": {
+      "name": "2. Bundesliga",
+      "n": 612,
+      "change": -0.007444534476570119
+     },
+     "serieb": {
+      "name": "Serie B",
+      "n": 760,
+      "change": -0.019064220556501255
+     },
+     "segunda": {
+      "name": "Segunda Divisi\u00f3n",
+      "n": 924,
+      "change": -0.03186022958721857
+     },
+     "ligue2": {
+      "name": "Ligue 2",
+      "n": 611,
+      "change": -0.002092276529056747
+     },
+     "superlig": {
+      "name": "S\u00fcper Lig",
+      "n": 647,
+      "change": -0.027762697136456627
+     },
+     "belgium": {
+      "name": "Belgian Pro League",
+      "n": 622,
+      "change": -0.024744950839471702
+     },
+     "greece": {
+      "name": "Greek Super League",
+      "n": 469,
+      "change": -0.009373622684833105
+     },
+     "scotchamp": {
+      "name": "Scottish Championship",
+      "n": 360,
+      "change": -0.00298448375589766
+     }
+    },
+    "adopt": true
+   },
+   "corners": {
+    "label": "Corners",
+    "tried": [
+     {
+      "xi": 0.002,
+      "ridge": 5.0,
+      "log_score": 2.646059637400873
+     },
+     {
+      "xi": 0.002,
+      "ridge": 15.0,
+      "log_score": 2.644305287286239
+     },
+     {
+      "xi": 0.002,
+      "ridge": 40.0,
+      "log_score": 2.644081217925104
+     },
+     {
+      "xi": 0.002,
+      "ridge": 100.0,
+      "log_score": 2.6476855507780286
+     },
+     {
+      "xi": 0.003,
+      "ridge": 5.0,
+      "log_score": 2.646490821766716
+     },
+     {
+      "xi": 0.003,
+      "ridge": 15.0,
+      "log_score": 2.644032836717751
+     },
+     {
+      "xi": 0.003,
+      "ridge": 40.0,
+      "log_score": 2.643957072249064
+     },
+     {
+      "xi": 0.003,
+      "ridge": 100.0,
+      "log_score": 2.648918950336009
+     },
+     {
+      "xi": 0.005,
+      "ridge": 5.0,
+      "log_score": 2.6491705568949415
+     },
+     {
+      "xi": 0.005,
+      "ridge": 15.0,
+      "log_score": 2.644804426174143
+     },
+     {
+      "xi": 0.005,
+      "ridge": 40.0,
+      "log_score": 2.644991517961707
+     },
+     {
+      "xi": 0.005,
+      "ridge": 100.0,
+      "log_score": 2.6519545129717947
+     },
+     {
+      "xi": 0.008,
+      "ridge": 5.0,
+      "log_score": 2.6543242724354954
+     },
+     {
+      "xi": 0.008,
+      "ridge": 15.0,
+      "log_score": 2.6465429522873825
+     },
+     {
+      "xi": 0.008,
+      "ridge": 40.0,
+      "log_score": 2.6472170100847
+     },
+     {
+      "xi": 0.008,
+      "ridge": 100.0,
+      "log_score": 2.655859997470147
+     },
+     {
+      "xi": 0.012,
+      "ridge": 5.0,
+      "log_score": 2.6609666683554907
+     },
+     {
+      "xi": 0.012,
+      "ridge": 15.0,
+      "log_score": 2.6486241874008805
+     },
+     {
+      "xi": 0.012,
+      "ridge": 40.0,
+      "log_score": 2.6500834267008093
+     },
+     {
+      "xi": 0.012,
+      "ridge": 100.0,
+      "log_score": 2.6596418751231505
+     },
+     {
+      "xi": 0.02,
+      "ridge": 5.0,
+      "log_score": 2.6717999101393333
+     },
+     {
+      "xi": 0.02,
+      "ridge": 15.0,
+      "log_score": 2.651987653668518
+     },
+     {
+      "xi": 0.02,
+      "ridge": 40.0,
+      "log_score": 2.654806140231597
+     },
+     {
+      "xi": 0.02,
+      "ridge": 100.0,
+      "log_score": 2.6645239616298966
+     }
+    ],
+    "xi": 0.003,
+    "ridge": 40.0,
+    "n_test": 13500,
+    "avg_total": 9.732148148148148,
+    "log_score": 2.618265233312946,
+    "log_score_base": 2.637029112167348,
+    "vs_base": {
+     "mean": -0.018763878854402085,
+     "lo": -0.021233927881555113,
+     "hi": -0.01611780482516868
+    },
+    "team_vs_base": {
+     "mean": -0.08090891309039998,
+     "lo": -0.08729024123312303,
+     "hi": -0.07412394439597879
+    },
+    "mae": 2.666975442128088,
+    "mae_base": 2.6808240649861745,
+    "ece": 0.007438241803805715,
+    "ece_base": 0.008740652535938784,
+    "calibration": [
+     {
+      "bin": [
+       0.4,
+       0.5
+      ],
+      "predicted": 0.4574557536957232,
+      "observed": 0.4535208643815201,
+      "n": 10736
+     },
+     {
+      "bin": [
+       0.5,
+       0.6
+      ],
+      "predicted": 0.5118772457763775,
+      "observed": 0.5329232995658466,
+      "n": 2764
+     }
+    ],
+    "by_league": {
+     "epl": {
+      "name": "Premier League",
+      "n": 760,
+      "change": -0.030010268970759313
+     },
+     "laliga": {
+      "name": "La Liga",
+      "n": 760,
+      "change": -0.02863234017196259
+     },
+     "seriea": {
+      "name": "Serie A",
+      "n": 760,
+      "change": -0.020074041257232444
+     },
+     "bundesliga": {
+      "name": "Bundesliga",
+      "n": 611,
+      "change": -0.014816728346423336
+     },
+     "ligue1": {
+      "name": "Ligue 1",
+      "n": 612,
+      "change": -0.010669089388093411
+     },
+     "championship": {
+      "name": "Championship",
+      "n": 1104,
+      "change": -0.015367797621972379
+     },
+     "scotland": {
+      "name": "Scottish Premiership",
+      "n": 456,
+      "change": -0.04826156994715802
+     },
+     "eredivisie": {
+      "name": "Eredivisie",
+      "n": 612,
+      "change": -0.034894812620398064
+     },
+     "portugal": {
+      "name": "Primeira Liga",
+      "n": 612,
+      "change": -0.04093898848267408
+     },
+     "leagueone": {
+      "name": "League One",
+      "n": 1104,
+      "change": -0.008407494903887258
+     },
+     "leaguetwo": {
+      "name": "League Two",
+      "n": 1104,
+      "change": -0.023422735589388566
+     },
+     "bundesliga2": {
+      "name": "2. Bundesliga",
+      "n": 612,
+      "change": 0.0011288180123441016
+     },
+     "serieb": {
+      "name": "Serie B",
+      "n": 760,
+      "change": -0.007448344986770383
+     },
+     "segunda": {
+      "name": "Segunda Divisi\u00f3n",
+      "n": 924,
+      "change": -0.003935238263442553
+     },
+     "ligue2": {
+      "name": "Ligue 2",
+      "n": 611,
+      "change": -0.011607258710892854
+     },
+     "superlig": {
+      "name": "S\u00fcper Lig",
+      "n": 647,
+      "change": -0.018268737155635595
+     },
+     "belgium": {
+      "name": "Belgian Pro League",
+      "n": 622,
+      "change": -0.011661680779897932
+     },
+     "greece": {
+      "name": "Greek Super League",
+      "n": 469,
+      "change": -0.03808847632575274
+     },
+     "scotchamp": {
+      "name": "Scottish Championship",
+      "n": 360,
+      "change": -0.013183296442575987
+     }
+    },
+    "adopt": true
+   },
+   "fouls": {
+    "label": "Fouls",
+    "tried": [
+     {
+      "xi": 0.002,
+      "ridge": 5.0,
+      "log_score": 3.0552579695631326
+     },
+     {
+      "xi": 0.002,
+      "ridge": 15.0,
+      "log_score": 3.0531172286242607
+     },
+     {
+      "xi": 0.002,
+      "ridge": 40.0,
+      "log_score": 3.051891502000444
+     },
+     {
+      "xi": 0.002,
+      "ridge": 100.0,
+      "log_score": 3.0540555581407354
+     },
+     {
+      "xi": 0.003,
+      "ridge": 5.0,
+      "log_score": 3.049509538498364
+     },
+     {
+      "xi": 0.003,
+      "ridge": 15.0,
+      "log_score": 3.0467566938907
+     },
+     {
+      "xi": 0.003,
+      "ridge": 40.0,
+      "log_score": 3.045224027745149
+     },
+     {
+      "xi": 0.003,
+      "ridge": 100.0,
+      "log_score": 3.048631550247007
+     },
+     {
+      "xi": 0.005,
+      "ridge": 5.0,
+      "log_score": 3.0463951570531695
+     },
+     {
+      "xi": 0.005,
+      "ridge": 15.0,
+      "log_score": 3.0418873584136983
+     },
+     {
+      "xi": 0.005,
+      "ridge": 40.0,
+      "log_score": 3.0398077681767637
+     },
+     {
+      "xi": 0.005,
+      "ridge": 100.0,
+      "log_score": 3.0458551742822273
+     },
+     {
+      "xi": 0.008,
+      "ridge": 5.0,
+      "log_score": 3.048782751828739
+     },
+     {
+      "xi": 0.008,
+      "ridge": 15.0,
+      "log_score": 3.0414782680585177
+     },
+     {
+      "xi": 0.008,
+      "ridge": 40.0,
+      "log_score": 3.039402851319186
+     },
+     {
+      "xi": 0.008,
+      "ridge": 100.0,
+      "log_score": 3.04887636313977
+     },
+     {
+      "xi": 0.012,
+      "ridge": 5.0,
+      "log_score": 3.0552661362768765
+     },
+     {
+      "xi": 0.012,
+      "ridge": 15.0,
+      "log_score": 3.044360886431178
+     },
+     {
+      "xi": 0.012,
+      "ridge": 40.0,
+      "log_score": 3.0431887332331904
+     },
+     {
+      "xi": 0.012,
+      "ridge": 100.0,
+      "log_score": 3.05524125847538
+     },
+     {
+      "xi": 0.02,
+      "ridge": 5.0,
+      "log_score": 3.0683633749202808
+     },
+     {
+      "xi": 0.02,
+      "ridge": 15.0,
+      "log_score": 3.0519953155485866
+     },
+     {
+      "xi": 0.02,
+      "ridge": 40.0,
+      "log_score": 3.0528919050931265
+     },
+     {
+      "xi": 0.02,
+      "ridge": 100.0,
+      "log_score": 3.0659978653192193
+     }
+    ],
+    "xi": 0.008,
+    "ridge": 40.0,
+    "n_test": 13500,
+    "avg_total": 24.37540740740741,
+    "log_score": 3.081213209333534,
+    "log_score_base": 3.134940627284097,
+    "vs_base": {
+     "mean": -0.05372741795056327,
+     "lo": -0.05920526642779083,
+     "hi": -0.04799409986639291
+    },
+    "team_vs_base": {
+     "mean": -0.12091677777179854,
+     "lo": -0.12875939905640807,
+     "hi": -0.11300068908334523
+    },
+    "mae": 4.182581419201316,
+    "mae_base": 4.436369064005743,
+    "ece": 0.0015328505084189576,
+    "ece_base": 0.01415196148487393,
+    "calibration": [
+     {
+      "bin": [
+       0.4,
+       0.5
+      ],
+      "predicted": 0.47310652110437834,
+      "observed": 0.47208511571788964,
+      "n": 9117
+     },
+     {
+      "bin": [
+       0.5,
+       0.6
+      ],
+      "predicted": 0.5132600207722933,
+      "observed": 0.51585671914214,
+      "n": 4383
+     }
+    ],
+    "by_league": {
+     "epl": {
+      "name": "Premier League",
+      "n": 760,
+      "change": -0.05168441482712449
+     },
+     "laliga": {
+      "name": "La Liga",
+      "n": 760,
+      "change": -0.08990294805797427
+     },
+     "seriea": {
+      "name": "Serie A",
+      "n": 760,
+      "change": -0.09006289449267602
+     },
+     "bundesliga": {
+      "name": "Bundesliga",
+      "n": 611,
+      "change": -0.04152367067702967
+     },
+     "ligue1": {
+      "name": "Ligue 1",
+      "n": 612,
+      "change": -0.06912683770394779
+     },
+     "championship": {
+      "name": "Championship",
+      "n": 1104,
+      "change": -0.01679731207086954
+     },
+     "scotland": {
+      "name": "Scottish Premiership",
+      "n": 456,
+      "change": -0.06595633821431202
+     },
+     "eredivisie": {
+      "name": "Eredivisie",
+      "n": 612,
+      "change": -0.06754204932623953
+     },
+     "portugal": {
+      "name": "Primeira Liga",
+      "n": 612,
+      "change": -0.08098155079882785
+     },
+     "leagueone": {
+      "name": "League One",
+      "n": 1104,
+      "change": -0.03708334375305089
+     },
+     "leaguetwo": {
+      "name": "League Two",
+      "n": 1104,
+      "change": -0.04791277924363113
+     },
+     "bundesliga2": {
+      "name": "2. Bundesliga",
+      "n": 612,
+      "change": -0.04283341328507895
+     },
+     "serieb": {
+      "name": "Serie B",
+      "n": 760,
+      "change": -0.08183382239238846
+     },
+     "segunda": {
+      "name": "Segunda Divisi\u00f3n",
+      "n": 924,
+      "change": -0.07487642154302732
+     },
+     "ligue2": {
+      "name": "Ligue 2",
+      "n": 611,
+      "change": 0.0018291083421484444
+     },
+     "superlig": {
+      "name": "S\u00fcper Lig",
+      "n": 647,
+      "change": -0.022048459176747137
+     },
+     "belgium": {
+      "name": "Belgian Pro League",
+      "n": 622,
+      "change": -0.061541042293849824
+     },
+     "greece": {
+      "name": "Greek Super League",
+      "n": 469,
+      "change": -0.04586984701202601
+     },
+     "scotchamp": {
+      "name": "Scottish Championship",
+      "n": 360,
+      "change": -0.04917792097225515
+     }
+    },
+    "adopt": true
+   },
+   "yellows": {
+    "label": "Yellow cards",
+    "tried": [
+     {
+      "xi": 0.002,
+      "ridge": 5.0,
+      "log_score": 2.1294397446322417
+     },
+     {
+      "xi": 0.002,
+      "ridge": 15.0,
+      "log_score": 2.12614033129668
+     },
+     {
+      "xi": 0.002,
+      "ridge": 40.0,
+      "log_score": 2.1261938583832847
+     },
+     {
+      "xi": 0.002,
+      "ridge": 100.0,
+      "log_score": 2.129948323899183
+     },
+     {
+      "xi": 0.003,
+      "ridge": 5.0,
+      "log_score": 2.1274534547755035
+     },
+     {
+      "xi": 0.003,
+      "ridge": 15.0,
+      "log_score": 2.123749848724125
+     },
+     {
+      "xi": 0.003,
+      "ridge": 40.0,
+      "log_score": 2.1245756971505165
+     },
+     {
+      "xi": 0.003,
+      "ridge": 100.0,
+      "log_score": 2.1289774412716054
+     },
+     {
+      "xi": 0.005,
+      "ridge": 5.0,
+      "log_score": 2.1262022863656735
+     },
+     {
+      "xi": 0.005,
+      "ridge": 15.0,
+      "log_score": 2.1217154015377435
+     },
+     {
+      "xi": 0.005,
+      "ridge": 40.0,
+      "log_score": 2.1237156821665537
+     },
+     {
+      "xi": 0.005,
+      "ridge": 100.0,
+      "log_score": 2.128506730312591
+     },
+     {
+      "xi": 0.008,
+      "ridge": 5.0,
+      "log_score": 2.126304621643932
+     },
+     {
+      "xi": 0.008,
+      "ridge": 15.0,
+      "log_score": 2.121304482129601
+     },
+     {
+      "xi": 0.008,
+      "ridge": 40.0,
+      "log_score": 2.1243265958815725
+     },
+     {
+      "xi": 0.008,
+      "ridge": 100.0,
+      "log_score": 2.1288979682964504
+     },
+     {
+      "xi": 0.012,
+      "ridge": 5.0,
+      "log_score": 2.1270547791722962
+     },
+     {
+      "xi": 0.012,
+      "ridge": 15.0,
+      "log_score": 2.1221107851586383
+     },
+     {
+      "xi": 0.012,
+      "ridge": 40.0,
+      "log_score": 2.1256208649186332
+     },
+     {
+      "xi": 0.012,
+      "ridge": 100.0,
+      "log_score": 2.1296604231506633
+     },
+     {
+      "xi": 0.02,
+      "ridge": 5.0,
+      "log_score": 2.1287910255623044
+     },
+     {
+      "xi": 0.02,
+      "ridge": 15.0,
+      "log_score": 2.124589966160679
+     },
+     {
+      "xi": 0.02,
+      "ridge": 40.0,
+      "log_score": 2.1281042517766866
+     },
+     {
+      "xi": 0.02,
+      "ridge": 100.0,
+      "log_score": 2.1312128064776696
+     }
+    ],
+    "xi": 0.008,
+    "ridge": 15.0,
+    "extras": {
+     "validation": {
+      "base": 2.121304482129601,
+      "closeness": 2.1179142411928,
+      "referee": 2.11840921417897,
+      "both": 2.1149952267444303
+     },
+     "best": "both",
+     "adopt": true,
+     "test": {
+      "mean": -0.004184285869809419,
+      "lo": -0.007001734562164118,
+      "hi": -0.001532489268313295
+     },
+     "test_ref_leagues": {
+      "mean": -0.0014107314727041932,
+      "lo": -0.0061321406571777145,
+      "hi": 0.003454948569339982
+     }
+    },
+    "n_test": 13500,
+    "avg_total": 4.116148148148148,
+    "log_score": 2.13071871984596,
+    "log_score_base": 2.1421735940464877,
+    "vs_base": {
+     "mean": -0.011454874200527432,
+     "lo": -0.015502452735965578,
+     "hi": -0.0073815529557955985
+    },
+    "team_vs_base": {
+     "mean": -0.02390092244462236,
+     "lo": -0.028611482088356937,
+     "hi": -0.019125047276453543
+    },
+    "mae": 1.6544551623396067,
+    "mae_base": 1.6711949414388267,
+    "ece": 0.007969274100072324,
+    "ece_base": 0.009386417922573127,
+    "calibration": [
+     {
+      "bin": [
+       0.3,
+       0.4
+      ],
+      "predicted": 0.38421439721351724,
+      "observed": 0.3935845213849287,
+      "n": 1964
+     },
+     {
+      "bin": [
+       0.4,
+       0.5
+      ],
+      "predicted": 0.4505414284357819,
+      "observed": 0.44431785816006836,
+      "n": 7022
+     },
+     {
+      "bin": [
+       0.5,
+       0.6
+      ],
+      "predicted": 0.5324589353118601,
+      "observed": 0.5425343376163049,
+      "n": 4514
+     }
+    ],
+    "by_league": {
+     "epl": {
+      "name": "Premier League",
+      "n": 760,
+      "change": -0.015039068475957151
+     },
+     "laliga": {
+      "name": "La Liga",
+      "n": 760,
+      "change": -0.02156757386503738
+     },
+     "seriea": {
+      "name": "Serie A",
+      "n": 760,
+      "change": -0.036115024742089386
+     },
+     "bundesliga": {
+      "name": "Bundesliga",
+      "n": 611,
+      "change": -0.01274789488423167
+     },
+     "ligue1": {
+      "name": "Ligue 1",
+      "n": 612,
+      "change": -0.024181715342078025
+     },
+     "championship": {
+      "name": "Championship",
+      "n": 1104,
+      "change": -0.00015705027113455117
+     },
+     "scotland": {
+      "name": "Scottish Premiership",
+      "n": 456,
+      "change": -0.004773448512003675
+     },
+     "eredivisie": {
+      "name": "Eredivisie",
+      "n": 612,
+      "change": -0.022060900654077287
+     },
+     "portugal": {
+      "name": "Primeira Liga",
+      "n": 612,
+      "change": -0.003809730325037286
+     },
+     "leagueone": {
+      "name": "League One",
+      "n": 1104,
+      "change": -0.017611541768716155
+     },
+     "leaguetwo": {
+      "name": "League Two",
+      "n": 1104,
+      "change": 0.0015457062695607426
+     },
+     "bundesliga2": {
+      "name": "2. Bundesliga",
+      "n": 612,
+      "change": -0.0051563135751542255
+     },
+     "serieb": {
+      "name": "Serie B",
+      "n": 760,
+      "change": 0.0020415203945409743
+     },
+     "segunda": {
+      "name": "Segunda Divisi\u00f3n",
+      "n": 924,
+      "change": -0.014781608720149109
+     },
+     "ligue2": {
+      "name": "Ligue 2",
+      "n": 611,
+      "change": -0.012673035965699686
+     },
+     "superlig": {
+      "name": "S\u00fcper Lig",
+      "n": 647,
+      "change": -0.004128437351847758
+     },
+     "belgium": {
+      "name": "Belgian Pro League",
+      "n": 622,
+      "change": -0.015298529967850971
+     },
+     "greece": {
+      "name": "Greek Super League",
+      "n": 469,
+      "change": -0.015942496745986467
+     },
+     "scotchamp": {
+      "name": "Scottish Championship",
+      "n": 360,
+      "change": 0.00501327453292344
+     }
+    },
+    "adopt": true
+   }
+  },
+  "validation_seasons": [
+   "2324"
+  ],
+  "test_seasons": [
+   "2425",
+   "2526"
+  ],
+  "config": {
+   "shots": {
+    "xi": 0.008,
+    "ridge": 40.0,
+    "show": true
+   },
+   "sot": {
+    "xi": 0.005,
+    "ridge": 15.0,
+    "show": true
+   },
+   "corners": {
+    "xi": 0.003,
+    "ridge": 40.0,
+    "show": true
+   },
+   "fouls": {
+    "xi": 0.008,
+    "ridge": 40.0,
+    "show": true
+   },
+   "yellows": {
+    "xi": 0.008,
+    "ridge": 15.0,
+    "closeness": true,
+    "referee": true,
+    "show": true
+   }
+  },
+  "runtime_s": 373.5
+ }
 }

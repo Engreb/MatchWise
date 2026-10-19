@@ -438,6 +438,7 @@ async function teamPage(meta, lg, team) {
   let hist = [];
   try { HIST = HIST || (await getJSON('history')).matches; hist = HIST.filter(m => m.league === lg && (m.home === team || m.away === team)).slice(0, 6); } catch { /* optional */ }
   const news = lg === 'epl' ? await teamNewsList(team) : '';
+  const statsCardT = teamStatsCard(await statsFor(lg), team);
   return `<div class="content narrow">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">${back.replace('class="back"', 'class="back" style="margin:0"')}${starBtn(lg, team)}</div>
     <div class="card spot" style="--club:${teamMeta(team).bg}">
@@ -455,6 +456,7 @@ async function teamPage(meta, lg, team) {
     ${tm ? `<div class="card card-pad" style="margin-top:12px"><h3 style="margin-bottom:6px">Ratings</h3>
       <div class="kv"><span>Attack</span><span>${ord(tm.rank_attack)} of ${n}</span></div><div class="kv"><span>Defence</span><span>${ord(tm.rank_defence)} of ${n}</span></div>
       <div class="kv"><span>Vs an average team</span><span class="num">${tm.strength > 0 ? '+' : ''}${tm.strength.toFixed(2)} goals</span></div></div>` : ''}
+    ${statsCardT}
     ${next.length ? `<div class="eyebrow"><span>Coming up</span></div><div class="fx-grid">${next.map(f => fixtureCard(f)).join('')}</div>` : ''}
     ${hist.length ? `<div class="eyebrow"><span>Recent results</span></div><div class="card" style="overflow:hidden">${hist.map(m => {
       const k = topIdx(m.pb || m.p), ok = k === m.outcome;
@@ -475,6 +477,55 @@ function xgCard(lg, team, r) {
     <div class="kv"><span>xG against</span><span class="num">${per(x.xga).toFixed(2)} per game · ${ord(rank(v => v.xga / v.n, false))} of ${all.length}</span></div>
     <div class="kv"><span>Points vs chances</span><span class="num" style="color:${diff >= 2 ? 'var(--win)' : diff <= -2 ? 'var(--loss)' : 'inherit'}">${r.pts} pts vs ${x.xpts.toFixed(1)} expected (${diff > 0 ? '+' : ''}${diff.toFixed(1)})</span></div>
     <p class="small muted" style="margin:8px 0 0">${diff >= 2 ? 'More points than their chances suggest: good finishing or some luck, which often evens out.' : diff <= -2 ? 'Fewer points than their chances suggest: poor finishing or bad luck, which often evens out.' : 'Points are in line with the chances they have created and conceded.'}</p></div>`;
+}
+
+/* ---------- match stats (shots, corners, fouls, cards) ---------- */
+const STAT_WORDS = { shots: ['taken', 'allowed'], sot: ['on target', 'faced on target'], corners: ['won', 'conceded'], fouls: ['committed', 'suffered'], yellows: ['received', 'for opponents'] };
+async function statsFor(lg) { try { return await getJSON(`stats-${lg}`); } catch { return null; } }
+function nbPmf(m, k, n) {
+  // Negative binomial (Poisson when k is huge), built recursively to avoid log-gamma.
+  const out = new Array(n).fill(0);
+  const pois = k >= 1e4, q = pois ? 0 : m / (k + m);
+  out[0] = pois ? Math.exp(-m) : Math.pow(k / (k + m), k);
+  for (let x = 1; x < n; x++) out[x] = out[x - 1] * (pois ? m / x : (x - 1 + k) / x * q);
+  return out;
+}
+function totalPmf(mh, ma, k) {
+  const n = Math.ceil(mh + ma + 12 * Math.sqrt(mh + ma + (mh * mh + ma * ma) / k) + 20);
+  const a = nbPmf(mh, k, n), b = nbPmf(ma, k, n), t = new Array(2 * n).fill(0);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) t[i + j] += a[i] * b[j];
+  return t;
+}
+const pOver = (pmf, line) => pmf.slice(Math.floor(line) + 1).reduce((s, v) => s + v, 0);
+function statLines(tot) {
+  const step = tot > 15 ? 2 : 1, mid = Math.floor(tot) + 0.5;
+  return [mid - step, mid, mid + step].filter(l => l > 0);
+}
+function matchStatsCard(S, home, away) {
+  if (!S) return '';
+  const v = S.pairs[`${home}|${away}`];
+  if (!v) return '';
+  const fx = S.fixtures[`${home}|${away}`];
+  const rows = S.stats.map((st, i) => {
+    let [mh, ma] = [v[2 * i], v[2 * i + 1]];
+    if (st === 'yellows' && fx && fx.yellows) [mh, ma] = fx.yellows;
+    const tot = mh + ma, pmf = totalPmf(mh, ma, S.k[st]);
+    return `<tr><td>${esc(S.labels[st])}</td><td class="r num">${mh.toFixed(1)}</td><td class="r num">${ma.toFixed(1)}</td><td class="r num" style="font-weight:600">${tot.toFixed(1)}</td>
+      <td class="r num hide-m" style="white-space:nowrap">${statLines(tot).map(l => `<span class="small muted">${l}</span> ${pct(pOver(pmf, l))}`).join(' · ')}</td></tr>`;
+  }).join('');
+  const ref = fx ? `<p class="small" style="margin:0 0 6px">Referee: <b>${esc(fx.referee)}</b>${fx.ref_pct != null && Math.abs(fx.ref_pct) >= 3 ? ` · usually shows about ${Math.abs(fx.ref_pct)}% ${fx.ref_pct > 0 ? 'more' : 'fewer'} yellow cards than average (already included)` : fx.ref_pct != null ? ' · close to the average for yellow cards' : ''}</p>` : '';
+  return `<section id="stats" class="card" style="margin-top:12px"><div class="card-head"><h3>Match stats</h3><span class="small muted">Expected per team · chance of going over</span></div>
+    <table><thead><tr><th>Stat</th><th class="r">${esc(teamMeta(home).code)}</th><th class="r">${esc(teamMeta(away).code)}</th><th class="r">Total</th><th class="r hide-m">Over</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="card-pad" style="border-top:1px solid var(--border)">${ref}<p class="small muted" style="margin:0">From each team's recent averages for and against, adjusted for the opponent and home advantage. Match insight, not betting advice.</p></div></section>`;
+}
+function teamStatsCard(S, team) {
+  const t = S && S.teams[team];
+  if (!t) return '';
+  const n = Object.keys(S.teams).length;
+  return `<div class="card card-pad" style="margin-top:12px"><h3 style="margin-bottom:2px">Match stats</h3><p class="small muted" style="margin:0 0 6px">Expected per game against an average team · rank of ${n}</p>
+    ${S.stats.filter(st => t[st]).map(st => { const [f, a, rf, ra] = t[st], w = STAT_WORDS[st];
+      return `<div class="kv"><span>${esc(S.labels[st])}</span><span class="num">${f.toFixed(1)} ${w[0]} <span class="muted">(${ord(rf)})</span> · ${a.toFixed(1)} ${w[1]} <span class="muted">(${ord(ra)})</span></span></div>`; }).join('')}
+    <p class="small muted" style="margin:8px 0 0">Ranks: 1st = most. Yellow cards "received" are this team's own bookings.</p></div>`;
 }
 
 /* ---------- match ---------- */
@@ -542,6 +593,7 @@ async function matchPage(meta, lgKey, home, away) {
       <p class="card-foot">${cols.length > 1 ? 'Green marks the better price. ' : ''}Bars compare the model's chance with the bookmakers' (margin removed). Bookmakers were more accurate than the model alone in testing, so a big gap more often means the model is missing news.</p></section>`;
   }
   const newsCard = await teamNews(lgKey, home, away);
+  const statsCard = matchStatsCard(await statsFor(lgKey), home, away);
   const atts = L.teams.map(x => x.attack), defs = L.teams.map(x => -x.defence);
   const sb = (val, arr) => `<div class="track"><i style="width:${Math.max(4, ((val - Math.min(...arr)) / ((Math.max(...arr) - Math.min(...arr)) || 1)) * 100)}%"></i></div>`;
   const cd = fx ? countdownText(fx.kickoff) : '';
@@ -557,7 +609,7 @@ async function matchPage(meta, lgKey, home, away) {
       <div class="big3 num">${[[home + ' win', p.H], ['Draw', p.D], [away + ' win', p.A]].map(([l, val], i) => `<div class="${i === v.k ? 'top' : ''}"><b>${pct(val)}</b><span>${esc(l)}</span><small>Fair odds ${fair(val)}</small></div>`).join('')}</div>
       ${pbar(probs, v.k)}
     </div>
-    <nav class="sectabs" aria-label="Sections"><a href="#prediction" data-sec>Prediction</a>${odds ? '<a href="#odds" data-sec>Odds</a>' : ''}<a href="#goals" data-sec>Goals</a><a href="#scores" data-sec>Scores</a><a href="#news" data-sec>Team news</a><a href="#why" data-sec>Why</a></nav>
+    <nav class="sectabs" aria-label="Sections"><a href="#prediction" data-sec>Prediction</a>${odds ? '<a href="#odds" data-sec>Odds</a>' : ''}<a href="#goals" data-sec>Goals</a><a href="#scores" data-sec>Scores</a>${statsCard ? '<a href="#stats" data-sec>Stats</a>' : ''}<a href="#news" data-sec>Team news</a><a href="#why" data-sec>Why</a></nav>
     ${canBlend ? `<div class="toggle" role="group" aria-label="Prediction source"><button data-view="blend" aria-pressed="${state.view === 'blend'}">Odds-adjusted</button><button data-view="model" aria-pressed="${state.view === 'model'}">Model only</button></div>` : ''}
     <section id="prediction">
       <div class="keys num">
@@ -585,6 +637,7 @@ async function matchPage(meta, lgKey, home, away) {
           <div class="axis"><span>↓ ${esc(home)}</span><span>${esc(away)} →</span></div>
           <div class="scoregrid" role="img" aria-label="Probability of each scoreline from 0–0 to 5–5">${sg}</div></div>
       </section>
+      ${statsCard}
       <section id="news" style="margin-top:12px">${newsCard}</section>
       <section id="why" class="card card-pad" style="margin-top:12px"><h3 style="margin-bottom:12px">Why the model thinks this</h3><ul class="why">${why.map(w => `<li>${w}</li>`).join('')}</ul>
         <p class="small muted" style="margin:10px 0 0">The model itself uses results and shots, not team news.</p></section>
@@ -791,6 +844,21 @@ function totalsNote(T) {
   if (!T.adopt) return `<li>Pulling each match's expected goals towards the league average was tested and didn't help on the held-out seasons, so it isn't used.</li>`;
   return `<li>Each match's expected total goals is <b>pulled ${Math.round(T.best * 100)}% of the way towards the league's average</b> over the past year (chosen on 2023–24). On the held-out seasons this cut log loss by ${Math.abs(T.o25.mean).toFixed(4)} for over 2.5 (${ci(T.o25)}) and ${Math.abs(T.btts.mean).toFixed(4)} for both teams to score (${ci(T.btts)}), with home/draw/away unchanged. It narrows the calibration gap (over 2.5 ${pct(T.ece_before.o25, 1)} → ${pct(T.ece_after.o25, 1)}, both teams to score ${pct(T.ece_before.btts, 1)} → ${pct(T.ece_after.btts, 1)}) but doesn't close it; a bigger pull made log loss worse.</li>`;
 }
+function statsAccuracyCard(A) {
+  const T = A.stats_test;
+  if (!T || !T.stats) return '';
+  const rows = Object.values(T.stats).filter(r => r.vs_base);
+  const ex = (T.stats.yellows || {}).extras;
+  return `<div class="card" style="margin-top:12px"><div class="card-head"><h3>Match stats</h3><span class="small muted">${rows[0] ? rows[0].n_test.toLocaleString('en-GB') : ''} matches · against league averages</span></div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Stat</th><th class="r">Avg total</th><th class="r">Typical miss</th><th class="r hide-m">League avg miss</th><th class="r">Log score change</th><th class="r hide-m">Calibration gap</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td>${esc(r.label)}${r.adopt ? '' : ' <span class="small muted">(not shown)</span>'}</td><td class="r num">${r.avg_total.toFixed(1)}</td><td class="r num">${r.mae.toFixed(2)}</td><td class="r num hide-m">${r.mae_base.toFixed(2)}</td>
+      <td class="r num" style="color:${r.vs_base.hi < 0 ? 'var(--win)' : 'var(--text-2)'}">${r.vs_base.mean.toFixed(3)}</td><td class="r num hide-m">${pct(r.ece, 1)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="card-pad" style="border-top:1px solid var(--border)"><ul class="why" style="margin:0">
+      <li>"Typical miss" is the average gap between the expected and actual match total. A negative log score change means better than using league averages; green means the 95% interval is entirely below zero, and only those stats are shown in the app.</li>
+      ${ex ? `<li>Yellow cards: ${ex.adopt ? `using <b>${ex.best === 'both' ? 'expected closeness and the referee' : ex.best === 'referee' ? 'the referee' : 'how close the match should be'}</b> improved predictions and is included` : `adding the referee and expected closeness was tested and ${ex.best === 'base' ? 'did not help on the tuning season' : 'did not hold up on the test seasons'}, so it isn't used`}.</li>` : ''}
+    </ul></div></div>`;
+}
 function strategyCard(S) {
   if (!S || !S.by_price) return '';
   const avg = S.by_price.avg || [], best = Object.fromEntries((S.by_price.max || []).map(x => [x.key, x]));
@@ -849,6 +917,7 @@ async function accuracyPage(meta) {
       <li>Bookmakers' <b>closing</b> odds remain the most accurate (${pct(mk.x12.accuracy, 1)} top pick), because they include late team news.</li>
     </ul></div>
     ${goalsCard(A)}
+    ${statsAccuracyCard(A)}
     ${strategyCard(STRAT)}
     <div class="grid-2" style="margin-top:12px">
       <div class="card card-pad"><h3 style="margin-bottom:2px">Calibration</h3><p class="small muted" style="margin:0 0 10px">Closer to the dashed line is better.</p>${chart}</div>

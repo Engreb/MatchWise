@@ -59,6 +59,22 @@ Thirteen leagues have full-season schedules from fixturedownload.com: the top fi
 
 Team names in the schedule are mapped explicitly in `engine/matchwise/teams.py`. An unknown name is reported during the update and that fixture shows as "unable to assess" until it's added.
 
+## Match stats
+
+Each match page has a **Stats** section with expected shots, shots on target, corners, fouls and yellow cards for each team, the match total, and the chance of going over nearby lines. Team pages show each side's per-game figures for and against. Code: `engine/matchwise/stats.py`; re-test with `python -m matchwise stats` (about 6 minutes).
+
+Each stat has its own model of the same form as goals: a "for" and an "against" rating per team, plus home advantage. Recent matches carry more weight, and probabilities use a negative binomial distribution. Yellow cards also use how close the match is expected to be (from the goals model) and, in the six British leagues, the referee. Settings were tuned on 2023–24 in the original nine leagues and tested on 2024–25 and 2025–26 in all 19 leagues (13,503 matches), against simply using league averages:
+
+| Stat | Avg match total | Typical miss (model) | Typical miss (league average) | Log score change (95% interval) |
+|---|---|---|---|---|
+| Shots | 24.6 | 4.48 | 4.65 | −0.062 (−0.066 to −0.057) |
+| Fouls | 24.4 | 4.18 | 4.44 | −0.054 (−0.059 to −0.048) |
+| Shots on target | 8.5 | 2.45 | 2.50 | −0.022 (−0.027 to −0.018) |
+| Corners | 9.7 | 2.67 | 2.68 | −0.019 (−0.021 to −0.016) |
+| Yellow cards | 4.1 | 1.65 | 1.67 | −0.012 (−0.016 to −0.007) |
+
+All five beat league averages and are well calibrated (gaps 0.2–0.8%), so all are shown. The gains are real but modest: most of a match's count is down to how that game unfolds. Shots and fouls depend most on team style; corners and cards much less. Expected closeness plus referee improved yellow-card predictions overall (−0.004, 95% −0.007 to −0.002). Measured in the British leagues alone, the referee's extra contribution was not clearly better than nothing (−0.001, 95% −0.006 to +0.003). There are no bookmaker odds for these markets in the data, so there is no comparison with the bookmakers. These are match insight, not betting lines.
+
 ## Tables and projections
 
 Each update simulates the rest of every league season 10,000 times from the model's predictions (allowing team strength to drift over the season) to give projected points and title, top-4/promotion and relegation chances, plus each team's chance of finishing in every position. Code: `engine/matchwise/projections.py`.
