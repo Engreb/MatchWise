@@ -189,6 +189,28 @@ def provisional_rows(div: str, key: str, teams: list[str], results: set, snaps: 
     return out
 
 
+def provisional_results(div: str, teams: list[str], cur: list[Match], schedule=None) -> list[Match]:
+    """Scores fixturedownload.com already has but football-data.co.uk hasn't published yet, as
+    results for the league table only (ratings and predictions wait for football-data, which also
+    has shots and xG). Matched by pairing count rather than date, so a rescheduled game that
+    football-data already lists under another date is never counted twice."""
+    known = set(teams)
+    have = Counter((m.home, m.away) for m in cur)
+    seen: Counter = Counter()
+    out = []
+    for s in (schedule if schedule is not None else load_schedule(div, include_played=True)):
+        if s.get("hg") is None or s.get("ag") is None:
+            continue
+        h, a = canonical(s["home"], known), canonical(s["away"], known)
+        if not h or not a:
+            continue
+        seen[(h, a)] += 1
+        if seen[(h, a)] > have[(h, a)]:
+            out.append(Match(div=div, season=CURRENT_SEASON, date=s["date"], kickoff_utc=s["kickoff_utc"],
+                             home=h, away=a, hg=int(s["hg"]), ag=int(s["ag"])))
+    return out
+
+
 def saved_extras(s: dict) -> dict:
     """Fields from a saved snapshot shown with the result: when it was saved and, if odds
     were available, the odds-adjusted prediction the app displayed."""
@@ -333,7 +355,9 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
 
         # Projected final table: every remaining scheduled game simulated from the current model.
         known = set(teams)
-        played = Counter((m.home, m.away) for m in cur)
+        prov_res = provisional_results(div, teams, cur)
+        table_res = cur + prov_res  # the table includes early scores; the model doesn't
+        played = Counter((m.home, m.away) for m in table_res)
         scheduled = Counter()
         for s_ in load_schedule(div, include_played=True):
             h, a = canonical(s_["home"], known), canonical(s_["away"], known)
@@ -342,15 +366,17 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
         if not scheduled and div in projections.ROUND_ROBIN:
             scheduled = Counter({(h, a): projections.ROUND_ROBIN[div] for h in teams for a in teams if h != a})
         remaining = [pair for pair, n in scheduled.items() for _ in range(max(0, n - played[pair]))]
-        proj = projections.project(div, cur, remaining, teams, model.rates)
+        proj = projections.project(div, table_res, remaining, teams, model.rates)
         form = {t: [] for t in teams}
-        for m in sorted(cur, key=lambda m: (m.date, m.kickoff_utc or datetime.min.replace(tzinfo=timezone.utc))):
+        for m in sorted(table_res, key=lambda m: (m.date, m.kickoff_utc or datetime.min.replace(tzinfo=timezone.utc))):
             for t, gf, ga in ((m.home, m.hg, m.ag), (m.away, m.ag, m.hg)):
                 if t in form:
                     form[t].append("W" if gf > ga else "D" if gf == ga else "L")
         tables[key] = {"name": name, **proj, "form": {t: v[-5:] for t, v in form.items()}, "xg": xg_table(cur),
-                       "trend": {"dates": trend_dates, "teams": trend}}
-        log(f"    table: {len(cur)} results, {len(remaining)} games left simulated")
+                       "trend": {"dates": trend_dates, "teams": trend},
+                       "provisional": [{"date": m.date.isoformat(), "home": m.home, "away": m.away, "hg": m.hg, "ag": m.ag}
+                                       for m in prov_res]}
+        log(f"    table: {len(cur)} results{f' + {len(prov_res)} provisional' if prov_res else ''}, {len(remaining)} games left simulated")
 
     # One file per run (several runs a day on match days), so changes as odds move are kept.
     # Offline runs are local experiments and are never saved as real pre-kick-off predictions.

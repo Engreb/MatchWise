@@ -81,6 +81,8 @@ All five beat league averages and are well calibrated (gaps 0.2–0.8%), so all 
 
 Each update simulates the rest of every league season 10,000 times from the model's predictions (allowing team strength to drift over the season) to give projected points and title, top-4/promotion and relegation chances, plus each team's chance of finishing in every position. Code: `engine/matchwise/projections.py`.
 
+In the 13 leagues with a full schedule source, the table also includes scores fixturedownload.com already has but football-data.co.uk hasn't published yet, marked "Provisional" on the Tables page. Ratings and predictions only use football-data results, because they also need shots and xG.
+
 ## Team news
 
 Premier League injuries, suspensions and doubts come from the official Fantasy Premier League data. They appear on each Premier League match page for context only; they are not used in predictions yet. Each update archives them in `engine/data/news/` so their value can be tested later.

@@ -29,3 +29,18 @@ def test_football_data_result_takes_precedence():
     snaps = {("D1", "2026-10-16", "Ein Frankfurt", "FC Koln"): SNAP}
     have = {(date(2026, 10, 16), "Ein Frankfurt", "FC Koln")}
     assert provisional_rows("D1", "bundesliga", TEAMS, have, snaps, schedule=SCHED) == []
+
+
+def test_table_results_add_unpublished_scores_once():
+    from datetime import date, datetime, timezone
+    from matchwise.data import Match
+    from matchwise.pipeline import provisional_results
+    ko = datetime(2026, 10, 18, 14, 0, tzinfo=timezone.utc)
+    cur = [Match("E0", "2627", date(2026, 9, 2), None, "Arsenal", "Chelsea", 2, 1)]  # rescheduled; already published
+    sched = [
+        {"home": "Arsenal", "away": "Chelsea", "date": date(2026, 8, 30), "kickoff_utc": ko, "hg": 2, "ag": 1},
+        {"home": "Everton", "away": "Arsenal", "date": date(2026, 10, 18), "kickoff_utc": ko, "hg": 0, "ag": 0},
+        {"home": "Chelsea", "away": "Everton", "date": date(2026, 10, 25), "kickoff_utc": ko, "hg": None, "ag": None},
+    ]
+    out = provisional_results("E0", ["Arsenal", "Chelsea", "Everton"], cur, schedule=sched)
+    assert [(m.home, m.away, m.hg, m.ag) for m in out] == [("Everton", "Arsenal", 0, 0)]
