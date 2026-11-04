@@ -878,10 +878,59 @@ function strategyCard(S) {
       <li>So these predictions are for understanding matches, not for choosing bets. If betting stops being fun, GamCare (0808 8020 133) and BeGambleAware offer free, confidential help.</li>
     </ul></div></div>`;
 }
+/* ---------- since launch: the live record from predictions saved before kick-off ---------- */
+function sinceLaunchCard(H, A) {
+  const rows = (H || []).filter(r => r.source === 'saved' && r.mkt && r.p);
+  if (rows.length < 20) return '';
+  const shown = r => r.pb || r.p;
+  const ll = (f) => rows.reduce((s, r) => s - Math.log(Math.max(f(r)[r.outcome], 1e-12)), 0) / rows.length;
+  const hit = (f) => rows.filter(r => topIdx(f(r)) === r.outcome).length / rows.length;
+  const n = rows.length, first = rows.map(r => r.date).sort()[0];
+  const S = { ll: ll(shown), hit: hit(shown) }, M = { ll: ll(r => r.p), hit: hit(r => r.p) }, B = { ll: ll(r => r.mkt), hit: hit(r => r.mkt) };
+  // App vs bookmakers' closing odds: mean log-loss gap per match with a rough 95% range.
+  const d = rows.map(r => -Math.log(Math.max(shown(r)[r.outcome], 1e-12)) + Math.log(Math.max(r.mkt[r.outcome], 1e-12)));
+  const dm = d.reduce((a, b) => a + b, 0) / n, sd = Math.sqrt(d.reduce((a, b) => a + (b - dm) ** 2, 0) / (n - 1)), se = 1.96 * sd / Math.sqrt(n);
+  const moe = 1.96 * Math.sqrt(S.hit * (1 - S.hit) / n);
+  const get = k => A && A.table && A.table.find(t => t.key === k);
+  const bt = get('blend') || get('dc');
+  // Week by week (weeks start on Monday): how often the pick the app showed was right.
+  const wk = s => { const t = new Date(s + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - (t.getUTCDay() + 6) % 7); return t.toISOString().slice(0, 10); };
+  const weeks = {};
+  rows.forEach(r => { const w = wk(r.date); (weeks[w] = weeks[w] || []).push(r); });
+  const wl = Object.entries(weeks).sort((a, b) => a[0] < b[0] ? -1 : 1);
+  const f3 = v => v.toFixed(3);
+  const o25 = rows.filter(r => r.o25 != null);
+  const llo = f => o25.reduce((s, r) => { const q = f(r), y = r.hg + r.ag > 2.5; return s - Math.log(Math.max(y ? q : 1 - q, 1e-12)); }, 0) / o25.length;
+  return `<div class="card" style="margin-bottom:12px" id="live"><div class="card-head"><h3>Since launch</h3><span class="small muted">${n.toLocaleString('en-GB')} matches since ${fmtDate(first)} · predictions saved before kick-off</span></div>
+    <div class="stats" style="border-top:1px solid var(--border)">
+      <div class="stat"><div class="lbl">App's top pick</div><div class="val num">${pct(S.hit, 1)}</div><div class="meta">right · ±${(moe * 100).toFixed(0)} pts</div></div>
+      <div class="stat"><div class="lbl">Bookmakers</div><div class="val num">${pct(B.hit, 1)}</div><div class="meta">closing-odds favourite</div></div>
+      <div class="stat"><div class="lbl">Model only</div><div class="val num">${pct(M.hit, 1)}</div><div class="meta">before odds</div></div>
+      ${bt ? `<div class="stat"><div class="lbl">Backtest</div><div class="val num">${pct(bt.x12.accuracy, 1)}</div><div class="meta">what testing expected</div></div>` : ''}
+    </div>
+    <table><thead><tr><th>Prediction</th><th class="r">Log loss</th><th class="r">Top pick</th>${bt ? '<th class="r hide-m">Backtest</th>' : ''}</tr></thead><tbody>
+      <tr style="background:var(--accent-soft)"><td style="font-weight:600">What the app showed <span class="small muted">(odds-adjusted when odds were out)</span></td><td class="r num">${f3(S.ll)}</td><td class="r num">${pct(S.hit, 1)}</td>${bt ? `<td class="r num hide-m">${f3(bt.x12.log_loss)}</td>` : ''}</tr>
+      <tr><td>Model only</td><td class="r num">${f3(M.ll)}</td><td class="r num">${pct(M.hit, 1)}</td>${bt ? `<td class="r num hide-m">${f3(get('dc').x12.log_loss)}</td>` : ''}</tr>
+      <tr><td>Bookmakers' closing odds</td><td class="r num">${f3(B.ll)}</td><td class="r num">${pct(B.hit, 1)}</td>${bt ? `<td class="r num hide-m">${f3(get('market').x12.log_loss)}</td>` : ''}</tr>
+      ${o25.length ? `<tr><td class="grp" colspan="${bt ? 4 : 3}">Over 2.5 goals (log loss)</td></tr>
+      <tr><td>What the app showed</td><td class="r num">${f3(llo(r => r.pb_o25 != null ? r.pb_o25 : r.o25))}</td><td class="r">—</td>${bt ? `<td class="r num hide-m">${bt.o25 ? f3(bt.o25.log_loss) : '—'}</td>` : ''}</tr>
+      <tr><td>Model only</td><td class="r num">${f3(llo(r => r.o25))}</td><td class="r">—</td>${bt ? `<td class="r num hide-m">${f3(get('dc').o25.log_loss)}</td>` : ''}</tr>` : ''}
+    </tbody></table>
+    <div class="card-pad" style="border-top:1px solid var(--border)">
+      <div class="small muted" style="margin-bottom:6px">Top pick right, week by week</div>
+      ${wl.map(([w, rs]) => { const h = rs.filter(r => topIdx(shown(r)) === r.outcome).length / rs.length;
+        return `<div class="lgbar"><span>w/c ${fmtDate(w)} <span class="small muted">· ${rs.length}</span></span><span class="b"><i style="width:${h * 100}%"></i></span><span class="num" style="text-align:right;font-weight:600">${pct(h)}</span></div>`; }).join('')}
+      <ul class="why" style="margin:10px 0 0">
+        <li>Only predictions actually saved before kick-off count here; nothing is replayed or recalculated afterwards.</li>
+        <li>Against the bookmakers' closing odds, the app's log loss is ${Math.abs(dm) < 0.0005 ? 'level' : `${Math.abs(dm).toFixed(3)} ${dm > 0 ? 'worse' : 'better'}`} per match (rough 95% range ${(dm - se) >= 0 ? '+' : ''}${(dm - se).toFixed(3)} to ${(dm + se) >= 0 ? '+' : ''}${(dm + se).toFixed(3)}). Closing odds include late team news, so a small gap is expected.</li>
+        <li>${n < 1500 ? `This is still a small sample: a top-pick rate from ${n} matches is only accurate to about ±${(moe * 100).toFixed(0)} percentage points, so single weeks swing a lot. Compare with the backtest once there are a few thousand matches.` : 'The sample is now large enough for a fair comparison with the backtest.'}</li>
+      </ul></div></div>`;
+}
 async function accuracyPage(meta) {
   const A = await getJSON('accuracy');
   let STRAT = null;
   try { STRAT = await getJSON('strategies'); } catch { /* optional */ }
+  try { HIST = HIST || (await getJSON('history')).matches; } catch { /* optional */ }
   const W = 320, Hh = 240, P = 36, sx = v => P + v * (W - P - 12), sy = v => Hh - P - v * (Hh - P - 12);
   const cal = A.calibration_1x2.filter(c => c.n >= 20);
   const chart = `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Calibration chart of predicted chance against how often it happened" style="color:var(--text-3)">
@@ -896,7 +945,8 @@ async function accuracyPage(meta) {
   const f3 = v => v == null ? '—' : v.toFixed(3);
   const d = A.diffs;
   return `<div class="content">${topbar()}
-    <div class="page-head"><div><h1>Model accuracy</h1><p class="sub">Tested on ${A.n_common.toLocaleString('en-GB')} matches from ${A.test_seasons.join(' and ')} that the model never saw during tuning.</p></div>${statusPill(meta)}</div>
+    <div class="page-head"><div><h1>Model accuracy</h1><p class="sub">Tested on ${A.n_common.toLocaleString('en-GB')} matches from ${A.test_seasons.join(' and ')} that the model never saw during tuning, and on every prediction saved since launch.</p></div>${statusPill(meta)}</div>
+    ${sinceLaunchCard(HIST, A)}
     <div class="card stats">
       <div class="stat"><div class="lbl">Odds-adjusted</div><div class="val num">${pct((bl || dc).x12.accuracy, 1)}</div><div class="meta">top pick right</div></div>
       <div class="stat"><div class="lbl">Model only</div><div class="val num">${pct(dc.x12.accuracy, 1)}</div><div class="meta">top pick right</div></div>
