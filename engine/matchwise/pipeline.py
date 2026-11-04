@@ -14,7 +14,7 @@ from .data import CURRENT_SEASON, LEAGUES, ROOT, Match, load_fixtures, load_resu
 from .model import DCModel, fit
 from collections import Counter
 
-from . import news, odds_api, pages, projections, stats
+from . import cups, news, odds_api, pages, projections, stats
 from .teams import canonical
 
 SNAPSHOT_DIR = ROOT / "data" / "snapshots"
@@ -199,6 +199,101 @@ def saved_extras(s: dict) -> dict:
     return out
 
 
+def cup_note(cm, home: str, away: str) -> str | None:
+    """How a tie that went beyond 90 minutes finished, e.g. "2–2 after extra time, Leeds won 4–3 on penalties"."""
+    if not cm.extra_time:
+        return None
+    note = f"{cm.ft_h}–{cm.ft_a} after extra time" if (cm.ft_h, cm.ft_a) != (cm.h90, cm.a90) else None
+    if cm.pens:
+        won = home if cm.pens[0] > cm.pens[1] else away
+        pens = f"{won} won {max(cm.pens)}–{min(cm.pens)} on penalties"
+        note = f"{note}, {pens}" if note else pens
+    return note
+
+
+def cup_section(out_dir: Path, now: datetime, cfg: dict, snaps: dict, log=print):
+    """FA Cup and EFL Cup ties between teams in our English leagues (see cups.py): upcoming
+    fixtures, this season's results and pre-kick-off snapshots. No bookmaker odds for cups."""
+    matches = cups.league_matches()
+    season = CURRENT_SEASON
+    divs = cups.team_divisions(matches, season)
+    teams, priors = cups.season_setup(matches, season, cfg)
+    last = max(m.date for m in matches if m.played)
+    cutoff = last + timedelta(days=1)
+    model = cups.joint_fit(matches, cutoff, cfg, teams, priors)
+    log(f"  Cups (Premier League to League Two rated together): {model.n_matches} matches, {len(teams)} teams")
+    known = set(divs)
+    fixture_rows, history_rows, snapshot_rows, meta = [], [], [], []
+    replayed, fits = {}, {}
+    for key, (_, name) in cups.CUPS.items():
+        ties = [m for m in cups.load(key) if m.season == season]
+        pairs = {}
+        for cm in ties:
+            h, a = canonical(cm.home, known), canonical(cm.away, known)
+            ok = bool(h and a)
+            home, away = h or cm.home, a or cm.away
+            date_s = cm.date.isoformat()
+            if cm.finished:
+                if not ok or cm.h90 is None:  # 90-minute score unknown (extra time, incomplete goal times)
+                    continue
+                s = snaps.get((key, date_s, home, away))
+                if s:
+                    p = [s["H"], s["D"], s["A"]]
+                    o25, btts, src, mcut = s["o25"], s["btts"], "saved", s["cutoff"]
+                else:
+                    if cm.date not in fits:  # replayed from results strictly before the match date
+                        fits[cm.date] = cups.joint_fit(matches, cm.date, cfg, teams, priors)
+                    pr = cups.predict(fits[cm.date], home, away, divs[home], divs[away], cm.neutral)
+                    p, o25, btts, src, mcut = [pr.home, pr.draw, pr.away], pr.over(2.5), pr.btts, "replay", cm.date.isoformat()
+                history_rows.append({
+                    "league": key, "date": date_s, "home": home, "away": away, "hg": cm.h90, "ag": cm.a90,
+                    "outcome": cm.outcome, "p": [_r(v) for v in p], "o25": _r(o25), "btts": _r(btts), "mkt": None,
+                    "source": src, "cutoff": mcut, "cup": True, "note": cup_note(cm, home, away), **(saved_extras(s) if s else {}),
+                })
+                continue
+            started = cm.state == "in" or cm.kickoff_utc <= now
+            if started and now - cm.kickoff_utc > timedelta(days=STARTED_DAYS):
+                continue
+            if not started and cm.kickoff_utc > now + timedelta(days=FIXTURE_DAYS):
+                continue
+            pr = cups.predict(model, home, away, divs[home], divs[away], cm.neutral) if ok else None
+            pl = payload(pr) if pr else None
+            if pl:
+                pairs[f"{home}|{away}"] = pl
+            f = {"home": home, "away": away, "date": cm.date, "kickoff_utc": cm.kickoff_utc,
+                 "round": cups.ROUND_NAMES.get(cm.round, cm.round)}
+            extra = {"cup": True, "neutral": cm.neutral,
+                     "divs": [divs[home], divs[away]] if ok else None}
+            if started:
+                fixture_rows.append({**started_row(f, key, key, ok, pairs, snaps), **extra})
+                continue
+            row = {"league": key, "div": key, "date": date_s, "kickoff": _iso(cm.kickoff_utc, cm.date),
+                   "round": f["round"], "home": home, "away": away, "assessable": ok,
+                   "market": None, "odds_source": None, "blend": None, "model": pl, **extra}
+            fixture_rows.append(row)
+            if ok:
+                snap = {"div": key, "date": date_s, "kickoff": row["kickoff"], "home": home, "away": away,
+                        "H": pl[2], "D": pl[3], "A": pl[4], "o25": pl[7], "btts": pl[10], "lam": pl[0], "mu": pl[1],
+                        "model": MODEL_VERSION + "-cup", "cutoff": cutoff.isoformat()}
+                if cm.kickoff_utc - now <= timedelta(hours=48):
+                    snap["mp"] = pl
+                snapshot_rows.append(snap)
+        (out_dir / f"league-{key}.json").write_text(json.dumps({
+            "key": key, "name": name, "cup": True, "season": season, "data_through": last.isoformat(),
+            "model": {"version": MODEL_VERSION, "cutoff": cutoff.isoformat(), "n_matches": model.n_matches,
+                      "home_adv": _r(model.home_adv), "home_effect_pct": round((np.exp(model.home_adv) - 1) * 100),
+                      "intercept": _r(model.intercept), "rho": _r(model.rho), "xi": cfg["xi"], "ridge": cfg["ridge"],
+                      "divisions": cups.DIVS},
+            "teams": [{**t, "div": divs[t["name"]]} for t in team_table(model, teams)], "pair_fields": PAIR_FIELDS,
+        }, separators=(",", ":")))
+        (out_dir / f"pairs-{key}.json").write_text(json.dumps({"key": key, "pair_fields": PAIR_FIELDS, "pairs": pairs},
+                                                              separators=(",", ":")))
+        n_up = sum(1 for r in fixture_rows if r["league"] == key)
+        log(f"    {name}: {n_up} upcoming, {sum(1 for r in history_rows if r['league'] == key)} results this season")
+        meta.append({"key": key, "name": name, "data_through": last.isoformat(), "fixtures": n_up})
+    return fixture_rows, history_rows, snapshot_rows, meta
+
+
 def run(out_dir: Path, log=print, offline: bool = False) -> dict:
     cfg = load_config()
     now = datetime.now(timezone.utc).replace(microsecond=0)
@@ -352,6 +447,15 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
                        "trend": {"dates": trend_dates, "teams": trend}}
         log(f"    table: {len(cur)} results, {len(remaining)} games left simulated")
 
+    cup_meta = []
+    try:
+        cf, ch, cs, cup_meta = cup_section(out_dir, now, cfg, snaps, log)
+        fixture_rows += cf
+        history_rows += ch
+        snapshot_rows += cs
+    except Exception as e:  # cups are an extra: never let them stop the league update
+        log(f"  ! cups skipped: {type(e).__name__}: {e}")
+
     # One file per run (several runs a day on match days), so changes as odds move are kept.
     # Offline runs are local experiments and are never saved as real pre-kick-off predictions.
     if snapshot_rows and not offline:
@@ -378,10 +482,10 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
     acc_path = out_dir / "accuracy.json"
     status = json.loads(acc_path.read_text())["status"] if acc_path.exists() else "unvalidated"
     meta = {"generated_at": now.isoformat().replace("+00:00", "Z"), "model_version": MODEL_VERSION,
-            "config": cfg, "status": status, "leagues": leagues_meta, "recent": recent,
+            "config": cfg, "status": status, "leagues": leagues_meta, "cups": cup_meta, "recent": recent,
             "source": "football-data.co.uk",
             "odds": {"provider": "The Odds API" if budget.calls else None, "calls": budget.calls, "credits_remaining": budget.remaining}}
     (out_dir / "fixtures.json").write_text(json.dumps({**meta, "fixtures": fixture_rows}, separators=(",", ":")))
-    pages.write(out_dir.parent, fixture_rows, {l["key"]: l["name"] for l in leagues_meta}, meta["generated_at"], log)
+    pages.write(out_dir.parent, fixture_rows, {l["key"]: l["name"] for l in leagues_meta + cup_meta}, meta["generated_at"], log)
     log(f"Wrote {len(fixture_rows)} fixtures, {len(history_rows)} history rows. Status: {status}")
     return meta

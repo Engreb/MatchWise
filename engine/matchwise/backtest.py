@@ -406,10 +406,10 @@ def run(out_dir: Path, log=print) -> dict:
     cfg["link"] = {top: r["adopt"] for top, r in res["link_test"].items()}
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
     res["config"] = cfg
-    # Results of the separate one-off experiments (xG, team news, total goals) are kept across re-runs.
+    # Results of the separate one-off experiments (xG, team news, total goals, cups) are kept across re-runs.
     acc = out_dir / "accuracy.json"
     prev_res = json.loads(acc.read_text(encoding="utf-8")) if acc.exists() else {}
-    for k in ("xg_test", "injury_test", "totals_test", "stats_test"):
+    for k in ("xg_test", "injury_test", "totals_test", "stats_test", "cup_test"):
         if k in prev_res:
             res[k] = prev_res[k]
     res["configs_tried"] = tried
