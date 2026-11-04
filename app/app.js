@@ -77,9 +77,14 @@ async function pairFor(lg, home, away) {
   return v ? parsePayload(v) : null;
 }
 let TABLES = {}, LEAGUE_NAMES = {}, TEAM_LG = {};
+// Leagues plus the cups (FA Cup, EFL Cup), whose ties are rated with the English leagues together.
+const comps = meta => [...meta.leagues, ...(meta.cups || [])];
+// A cup row belongs to each team's own league for favourites and team links.
+const teamLg = (f, t) => f.cup ? TEAM_LG[t] || f.league : f.league;
+const favIn = (f, t) => isFavTeam(teamLg(f, t), t);
 function indexTables(meta, T) {
   TABLES = T;
-  LEAGUE_NAMES = Object.fromEntries(meta.leagues.map(l => [l.key, l.name]));
+  LEAGUE_NAMES = Object.fromEntries(comps(meta).map(l => [l.key, l.name]));
   TEAM_LG = {};
   for (const [k, t] of Object.entries(T)) for (const r of t.rows) TEAM_LG[r.team] = k;
 }
@@ -114,7 +119,7 @@ const ord = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 
 const matchHref = (lg, h, a) => `#/match/${lg}/${encodeURIComponent(h)}/${encodeURIComponent(a)}`;
 const teamHref = (lg, t) => `#/team/${lg}/${encodeURIComponent(t)}`;
 const CC = { epl: 'ENG', championship: 'ENG', laliga: 'ESP', seriea: 'ITA', bundesliga: 'GER', ligue1: 'FRA', scotland: 'SCO', eredivisie: 'NED', portugal: 'POR',
-  leagueone: 'ENG', leaguetwo: 'ENG', bundesliga2: 'GER', serieb: 'ITA', segunda: 'ESP', ligue2: 'FRA', superlig: 'TUR', belgium: 'BEL', greece: 'GRE', scotchamp: 'SCO' };
+  leagueone: 'ENG', leaguetwo: 'ENG', bundesliga2: 'GER', serieb: 'ITA', segunda: 'ESP', ligue2: 'FRA', superlig: 'TUR', belgium: 'BEL', greece: 'GRE', scotchamp: 'SCO', facup: 'ENG', eflcup: 'ENG' };
 const cc = lg => `<span class="cc" aria-hidden="true">${CC[lg] || ''}</span>`;
 function ago(s) {
   const m = Math.max(0, Math.round((Date.now() - new Date(s)) / 6e4));
@@ -249,27 +254,28 @@ const staleNotice = meta => ((Date.now() - new Date(meta.generated_at)) / 864e5 
 
 /* ---------- fixture card + compact row ---------- */
 function fixtureCard(f, showLeague = true) {
-  const star = t => isFavTeam(f.league, t) ? I.star : '';
+  const star = t => favIn(f, t) ? I.star : '';
+  const where = `${fmtTime(f.kickoff)}${showLeague ? ' · ' + esc(f.lgName) : ''}${f.cup && f.round ? ' · ' + esc(f.round) : ''}`;
   if (!f.pr) {
-    return `<div class="card fx"><div class="fx-top"><span class="num">${cc(f.league)} ${fmtTime(f.kickoff)}${showLeague ? ' · ' + esc(f.lgName) : ''}</span><span class="pill">Unable to assess</span></div>
+    return `<div class="card fx"><div class="fx-top"><span class="num">${cc(f.league)} ${where}</span><span class="pill" ${f.cup ? 'title="Only teams from the Premier League to League Two are rated"' : ''}>Unable to assess</span></div>
       <div class="team">${crest(f.home)}<span class="nm">${esc(f.home)}</span></div><div class="team">${crest(f.away)}<span class="nm">${esc(f.away)}</span></div></div>`;
   }
   const p = f.pr, probs = [p.H, p.D, p.A], v = verdict(p), started = isStarted(f);
   if (started) { v.label = 'Awaiting result'; v.cls = 'warn'; }
   return `<a class="card fx" href="${matchHref(f.league, f.home, f.away)}" aria-label="${esc(f.home)} versus ${esc(f.away)}: ${pct(p.H)} home, ${pct(p.D)} draw, ${pct(p.A)} away">
-    <div class="fx-top"><span class="num">${cc(f.league)} ${fmtTime(f.kickoff)}${showLeague ? ' · ' + esc(f.lgName) : ''}</span><span class="pill ${v.cls}">${v.label}</span></div>
+    <div class="fx-top"><span class="num">${cc(f.league)} ${where}</span><span class="pill ${v.cls}">${v.label}</span></div>
     <div class="team">${crest(f.home)}<span class="nm ${v.k === 0 ? 'fav' : ''}">${esc(f.home)}</span>${star(f.home)}${formHtml(f.home)}</div>
     <div class="team">${crest(f.away)}<span class="nm ${v.k === 2 ? 'fav' : ''}">${esc(f.away)}</span>${star(f.away)}${formHtml(f.away)}</div>
     ${pbar(probs, v.k)}${probsRow(probs, v.k)}
     <div class="fx-foot num">${started
       ? `<span>Kicked off ${fmtTime(f.kickoff)} · prediction saved ${f.saved_at ? fmtShort(f.saved_at) + ' ' + fmtTime(f.saved_at) : 'before kick-off'}</span>`
-      : `<span>Expected goals <b>${p.lam.toFixed(1)}–${p.mu.toFixed(1)}</b> · Likely <b>${p.top[0][0]}–${p.top[0][1]}</b></span><span>${f.blend ? 'Odds-adjusted' : 'Model'}</span>`}</div>
+      : `<span>Expected goals <b>${p.lam.toFixed(1)}–${p.mu.toFixed(1)}</b> · Likely <b>${p.top[0][0]}–${p.top[0][1]}</b></span><span>${f.cup ? '90 minutes' : f.blend ? 'Odds-adjusted' : 'Model'}</span>`}</div>
   </a>`;
 }
 function compactRow(f) {
   if (!f.pr) return `<div class="crow"><span class="small muted num">${fmtTime(f.kickoff)}</span><span><div class="t">${crest(f.home)}${esc(f.home)}</div><div class="t">${crest(f.away)}${esc(f.away)}</div></span><span class="small muted">Unable to assess</span></div>`;
   const ps = [f.pr.H, f.pr.D, f.pr.A], k = topIdx(ps);
-  const nm = (t, i) => `<div class="t ${k === i ? 'f' : ''}">${crest(t)}${esc(t)}${isFavTeam(f.league, t) ? ' ' + I.star : ''}</div>`;
+  const nm = (t, i) => `<div class="t ${k === i ? 'f' : ''}">${crest(t)}${esc(t)}${favIn(f, t) ? ' ' + I.star : ''}</div>`;
   return `<a class="crow" href="${matchHref(f.league, f.home, f.away)}" aria-label="${esc(f.home)} versus ${esc(f.away)}: ${pct(ps[0])} home, ${pct(ps[1])} draw, ${pct(ps[2])} away">
     <span class="small muted num">${isStarted(f) ? '<span class="pill warn" style="padding:1px 5px;font-size:10px">Started</span>' : fmtTime(f.kickoff)}</span><span style="min-width:0">${nm(f.home, 0)}${nm(f.away, 2)}</span>
     <span><div class="p3 num">${ps.map((x, i) => i === k ? `<b>${pct(x)}</b>` : `<span>${pct(x)}</span>`).join('')}</div><div class="mini" aria-hidden="true">${ps.map((x, i) => `<i class="${i === k ? 'on' : ''}" style="flex:${Math.max(x, .02)}"></i>`).join('')}</div></span></a>`;
@@ -291,11 +297,11 @@ async function weekendPage(meta) {
   if (!fx.length) return `<div class="content">${head}${staleNotice(meta)}<div class="card empty"><h3>No upcoming matches found</h3><p>You can still predict any match.</p><a class="btn primary" href="#/predict">Predict a match</a></div></div>`;
 
   // Your teams first: a spotlight on the next match, then the rest.
-  const mine = all.filter(f => isFavTeam(f.league, f.home) || isFavTeam(f.league, f.away));
+  const mine = all.filter(f => favIn(f, f.home) || favIn(f, f.away));
   let yours;
   if (mine.length) {
     const sp = mine[0], p = sp.pr, v = verdict(p);
-    const club = teamMeta(isFavTeam(sp.league, sp.home) ? sp.home : sp.away).bg;
+    const club = teamMeta(favIn(sp, sp.home) ? sp.home : sp.away).bg;
     const parts = hasTime(sp.kickoff) ? countdownParts(sp.kickoff) : null;
     yours = `<div class="eyebrow"><span>Next up for your teams</span><a href="#/settings">Edit</a></div>
       <a class="card spot" style="--club:${club};display:block;color:inherit" href="${matchHref(sp.league, sp.home, sp.away)}">
@@ -340,7 +346,7 @@ async function weekendPage(meta) {
 async function fixturesPage(meta) {
   const hasFavs = favs.teams.length || favs.leagues.length;
   const mineOnly = hasFavs && state.fxMine;
-  const isMine = f => isFavLeague(f.league) || isFavTeam(f.league, f.home) || isFavTeam(f.league, f.away);
+  const isMine = f => isFavLeague(f.league) || favIn(f, f.home) || favIn(f, f.away);
   const fx = upcoming(meta).filter(f => !mineOnly || isMine(f));
   const days = [...new Set(fx.map(f => ukDate(f.kickoff)))].sort();
   if (!state.fxDay || !days.includes(state.fxDay)) state.fxDay = days[0] || null;
@@ -356,7 +362,7 @@ async function fixturesPage(meta) {
   const dayFx = fx.filter(f => ukDate(f.kickoff) === state.fxDay);
   const groups = {};
   dayFx.forEach(f => (groups[f.league] ||= []).push(f));
-  const order = leagueOrder(meta).filter(k => groups[k]);
+  const order = [...leagueOrder(meta), ...(meta.cups || []).map(c => c.key)].filter(k => groups[k]);
   const body = order.map(k => {
     const open = !state.collapsed.has(k);
     const headBtn = `<button class="lg-head" data-collapse="${k}" aria-expanded="${open}">${cc(k)}${isFavLeague(k) ? I.star : ''}${esc(LEAGUE_NAMES[k])} <span class="n">${groups[k].length}</span><span class="chev">${open ? I.down : I.right}</span></button>`;
@@ -435,7 +441,7 @@ async function teamPage(meta, lg, team) {
         ${tr.dates.map((d, i) => (i % Math.ceil(tr.dates.length / 4) === 0 || i === tr.dates.length - 1) ? `<text x="${sx(i)}" y="${H - 3}" font-size="9.5" text-anchor="middle" fill="var(--text-3)">${fmtDate(d)}</text>` : '').join('')}
       </svg>`;
   }
-  const next = upcoming(meta).filter(f => f.league === lg && (f.home === team || f.away === team)).slice(0, 3);
+  const next = upcoming(meta).filter(f => (f.league === lg || f.cup) && (f.home === team || f.away === team)).slice(0, 3);
   let hist = [];
   try { HIST = HIST || (await getJSON('history')).matches; hist = HIST.filter(m => m.league === lg && (m.home === team || m.away === team)).slice(0, 6); } catch { /* optional */ }
   const news = lg === 'epl' ? await teamNewsList(team) : '';
@@ -559,7 +565,15 @@ async function matchPage(meta, lgKey, home, away) {
     }
   }
 
-  const why = [
+  const neutral = !!(fx && fx.neutral);
+  const why = L.cup ? [
+    `Cup ties use one model of all ${n} teams from the Premier League to League Two, rated together from their league results. Teams that moved between divisions link the four leagues on one scale.`,
+    `<b>${esc(home)}</b> (${esc(LEAGUE_NAMES[TEAM_LG[home]] || '')}) rate ${ord(th.rank_attack)} for attack and ${ord(th.rank_defence)} for defence out of the ${n}.`,
+    `<b>${esc(away)}</b> (${esc(LEAGUE_NAMES[TEAM_LG[away]] || '')}) rate ${ord(ta.rank_attack)} for attack and ${ord(ta.rank_defence)} for defence.`,
+    neutral ? `Played at a <b>neutral venue</b>, so neither side gets home advantage.` : `Playing at home is worth about <b>${L.model.home_effect_pct}%</b> more goals, based on recent league seasons.`,
+    `This is the <b>90-minute result</b>. Extra time and penalties aren't modelled: a draw here means the tie goes to extra time or penalties.`,
+    `In past cup ties the model clearly beat simple guesses, but it tends to underrate the side from the higher division a little, and it can't see cup rotation. See Model accuracy.`,
+  ] : [
     `<b>${esc(home)}</b> rate ${ord(th.rank_attack)} for attack and ${ord(th.rank_defence)} for defence out of ${n} ${esc(L.name)} teams.`,
     `<b>${esc(away)}</b> rate ${ord(ta.rank_attack)} for attack and ${ord(ta.rank_defence)} for defence.`,
     `Playing at home is worth about <b>${L.model.home_effect_pct}%</b> more goals in the ${esc(L.name)}, based on recent seasons.`,
@@ -570,7 +584,7 @@ async function matchPage(meta, lgKey, home, away) {
     `Together that gives expected goals of <b>${p.lam.toFixed(2)}</b> for ${esc(home)} and <b>${p.mu.toFixed(2)}</b> for ${esc(away)}. Every probability on this page comes from that score distribution.`,
   ];
   [th, ta].forEach(tm => {
-    if (tm.limited) why.push(`<span style="color:var(--warn)">${esc(tm.name)} have little recent ${esc(L.name)} data${tm.promoted_prior ? ', so their rating started from the level of last season\'s relegated sides' : ''}. Treat this prediction with extra caution.</span>`);
+    if (tm.limited) why.push(`<span style="color:var(--warn)">${esc(tm.name)} have little recent ${L.cup ? 'league' : esc(L.name)} data${tm.promoted_prior ? ', so their rating started from the level of last season\'s relegated sides' : ''}. Treat this prediction with extra caution.</span>`);
   });
 
   // Odds: better of Sky Bet / Coral highlighted, with model vs bookmaker bars.
@@ -593,18 +607,20 @@ async function matchPage(meta, lgKey, home, away) {
       }).join('')}
       <p class="card-foot">${cols.length > 1 ? 'Green marks the better price. ' : ''}Bars compare the model's chance with the bookmakers' (margin removed). Bookmakers were more accurate than the model alone in testing, so a big gap more often means the model is missing news.</p></section>`;
   }
-  const newsCard = await teamNews(lgKey, home, away);
-  const statsCard = matchStatsCard(await statsFor(lgKey), home, away);
+  const newsCard = await teamNews(L.cup && TEAM_LG[home] === 'epl' && TEAM_LG[away] === 'epl' ? 'epl' : lgKey, home, away);
+  const lgOf = t => L.cup ? TEAM_LG[t] || lgKey : lgKey;
+  const statsCard = L.cup ? '' : matchStatsCard(await statsFor(lgKey), home, away);  // no match-stats model for cups
   const atts = L.teams.map(x => x.attack), defs = L.teams.map(x => -x.defence);
   const sb = (val, arr) => `<div class="track"><i style="width:${Math.max(4, ((val - Math.min(...arr)) / ((Math.max(...arr) - Math.min(...arr)) || 1)) * 100)}%"></i></div>`;
   const cd = fx ? countdownText(fx.kickoff) : '';
-  const side = t => `<a class="side" href="${teamHref(lgKey, t)}" style="color:inherit">${crest(t, 'lg')}<span class="nm">${esc(t)}</span>${formHtml(t)}</a>`;
+  const side = t => `<a class="side" href="${teamHref(lgOf(t), t)}" style="color:inherit">${crest(t, 'lg')}<span class="nm">${esc(t)}</span>${formHtml(t)}</a>`;
 
   const startedNote = started ? `<div class="notice" role="status">Kicked off ${fmtShort(fx.kickoff)} ${fmtTime(fx.kickoff)}. This is the prediction saved before kick-off${fx.saved_at ? ` (${fmtShort(fx.saved_at)} ${fmtTime(fx.saved_at)})` : ''}. The result will appear under This season once it's published, usually within a day or two.</div>` : '';
+  const cupNote = L.cup && !started ? `<div class="notice">Cup tie: these are the chances after 90 minutes. Extra time and penalties aren't modelled, and there are no bookmaker odds for cups.</div>` : '';
   return `<div class="content">
-    ${back}${startedNote}
+    ${back}${startedNote}${cupNote}
     <div class="card hero">
-      <div class="meta">${cc(lgKey)} ${esc(L.name)} · ${fx ? `${fmtDay(fx.kickoff)} · ${fmtTime(fx.kickoff)}` : 'Custom matchup'}</div>
+      <div class="meta">${cc(lgKey)} ${esc(L.name)}${fx && fx.round && L.cup ? ` · ${esc(fx.round)}` : ''} · ${fx ? `${fmtDay(fx.kickoff)} · ${fmtTime(fx.kickoff)}` : 'Custom matchup'}${neutral ? ' · neutral venue' : ''}</div>
       <div class="vs">${side(home)}<div class="mid">vs</div>${side(away)}</div>
       <span class="pill ${started ? 'warn' : 'accent'}">${started ? 'Awaiting result' : v.label + (cd ? ' · ' + cd : '')}</span>
       <div class="big3 num">${[[home + ' win', p.H], ['Draw', p.D], [away + ' win', p.A]].map(([l, val], i) => `<div class="${i === v.k ? 'top' : ''}"><b>${pct(val)}</b><span>${esc(l)}</span><small>Fair odds ${fair(val)}</small></div>`).join('')}</div>
@@ -641,11 +657,11 @@ async function matchPage(meta, lgKey, home, away) {
       ${statsCard}
       <section id="news" style="margin-top:12px">${newsCard}</section>
       <section id="why" class="card card-pad" style="margin-top:12px"><h3 style="margin-bottom:12px">Why the model thinks this</h3><ul class="why">${why.map(w => `<li>${w}</li>`).join('')}</ul>
-        <p class="small muted" style="margin:10px 0 0">The model itself uses results and shots, not team news.</p></section>
+        <p class="small muted" style="margin:10px 0 0">${L.cup ? 'The cup model uses league goals only, not shots or team news.' : 'The model itself uses results and shots, not team news.'}</p></section>
     </div>
     <aside aria-label="Team strength and model details">
-      <div class="card card-pad"><h3 style="margin-bottom:2px">Team strength</h3><p class="small muted" style="margin:0 0 10px">Compared with the rest of the ${esc(L.name)}</p>
-        ${[th, ta].map(tm => `<a class="news-team" style="margin-top:10px;color:inherit" href="${teamHref(lgKey, tm.name)}">${crest(tm.name, 'sm')}${esc(tm.name)}</a>
+      <div class="card card-pad"><h3 style="margin-bottom:2px">Team strength</h3><p class="small muted" style="margin:0 0 10px">${L.cup ? `Compared with all ${n} teams from the Premier League to League Two` : `Compared with the rest of the ${esc(L.name)}`}</p>
+        ${[th, ta].map(tm => `<a class="news-team" style="margin-top:10px;color:inherit" href="${teamHref(lgOf(tm.name), tm.name)}">${crest(tm.name, 'sm')}${esc(tm.name)}</a>
           <div class="strength"><div>${sb(tm.attack, atts)}</div><span class="small muted">Attack ${ord(tm.rank_attack)}</span></div>
           <div class="strength"><div>${sb(-tm.defence, defs)}</div><span class="small muted">Defence ${ord(tm.rank_defence)}</span></div>`).join('')}
       </div>
@@ -711,7 +727,7 @@ async function predictPage(meta) {
 /* ---------- this season ---------- */
 const brierOf = (p, o) => p.reduce((a, v, k) => a + (v - (k === o ? 1 : 0)) ** 2, 0);
 function histToolbar(meta) {
-  const chips = [['all', 'All'], ...meta.leagues.map(l => [l.key, l.name])]
+  const chips = [['all', 'All'], ...comps(meta).map(l => [l.key, l.name])]
     .map(([k, l]) => `<button class="chip" data-hl="${k}" aria-pressed="${state.histLeague === k}">${esc(l)}</button>`).join('');
   return `<div class="toggle" role="group" aria-label="Which predictions">
       <button data-hv="all" aria-pressed="${state.histView !== 'saved'}">All matches</button>
@@ -741,7 +757,7 @@ function savedView(meta, H) {
       ${rows.map(m => {
         const shown = m.pb || m.p, ok = topIdx(shown) === m.outcome;
         return `<tr><td><div class="team" style="padding:0">${crest(m.home, 'sm')}<span style="font-weight:600" class="num">${esc(m.home)} ${m.hg}–${m.ag} ${esc(m.away)}</span></div>
-            <div class="small muted" style="margin-left:38px">${esc(LEAGUE_NAMES[m.league])} · ${fmtShort(m.date)}${m.provisional ? ' · <span class="pill warn" style="padding:0 6px;font-size:10.5px" title="Score from fixturedownload.com; confirmed when football-data.co.uk publishes it">Provisional score</span>' : ''}</div></td>
+            <div class="small muted" style="margin-left:38px">${esc(LEAGUE_NAMES[m.league])}${m.cup ? ` · score after 90 minutes${m.note ? ` (${esc(m.note)})` : ''}` : ''} · ${fmtShort(m.date)}${m.provisional ? ' · <span class="pill warn" style="padding:0 6px;font-size:10.5px" title="Score from fixturedownload.com; confirmed when football-data.co.uk publishes it">Provisional score</span>' : ''}</div></td>
           <td class="r">${cell(m.p)}</td><td class="r">${m.pb ? cell(m.pb) : '<span class="muted">—</span>'}</td>
           <td class="r small muted hide-m">${fmtDate(m.saved_at)}${m.saves > 1 ? ` · ${m.saves} saves` : ''}</td>
           <td class="r">${ok ? '<span class="pill ok" aria-label="Correct"><span class="hide-m">Correct</span><span class="show-m">✓</span></span>' : '<span class="pill" aria-label="Missed"><span class="hide-m">Missed</span><span class="show-m">✗</span></span>'}</td></tr>`;
@@ -778,7 +794,7 @@ async function historyPage(meta) {
   const mBrier = withMkt.reduce((s, m) => s + brierOf(m.mkt, m.outcome), 0) / (withMkt.length || 1);
   const mHits = withMkt.filter(m => topIdx(m.mkt) === m.outcome).length;
   const saved = rows.filter(r => r.source === 'saved').length;
-  const byLeague = state.histLeague === 'all' ? meta.leagues.map(l => {
+  const byLeague = state.histLeague === 'all' ? comps(meta).map(l => {
     const ms = H.matches.filter(m => m.league === l.key), mk = ms.filter(m => m.mkt);
     return [l.key, l.name, ms.length ? ms.filter(m => topIdx(m.p) === m.outcome).length / ms.length : 0, mk.length ? mk.filter(m => topIdx(m.mkt) === m.outcome).length / mk.length : null, ms.length];
   }).filter(x => x[4]).sort((a, b) => b[2] - a[2]) : [];
@@ -799,7 +815,7 @@ async function historyPage(meta) {
         const t = topIdx(m.p), ok = t === m.outcome, pick = [m.home, 'Draw', m.away][t];
         return `<tr><td class="num hide-m muted">${fmtShort(m.date)}</td>
           <td><div class="team" style="padding:0">${crest(m.home, 'sm')}<span style="font-weight:600" class="num">${esc(m.home)} ${m.hg}–${m.ag} ${esc(m.away)}</span></div>
-            <div class="small muted" style="margin-left:38px">${esc(LEAGUE_NAMES[m.league])} · ${m.source === 'saved' ? 'Saved before kick-off' : 'Replayed'}${m.provisional ? ' · <span class="pill warn" style="padding:0 6px;font-size:10.5px" title="Score from fixturedownload.com; confirmed when football-data.co.uk publishes it">Provisional score</span>' : ''}</div></td>
+            <div class="small muted" style="margin-left:38px">${esc(LEAGUE_NAMES[m.league])}${m.cup ? ` · score after 90 minutes${m.note ? ` (${esc(m.note)})` : ''}` : ''} · ${m.source === 'saved' ? 'Saved before kick-off' : 'Replayed'}${m.provisional ? ' · <span class="pill warn" style="padding:0 6px;font-size:10.5px" title="Score from fixturedownload.com; confirmed when football-data.co.uk publishes it">Provisional score</span>' : ''}</div></td>
           <td class="hide-m">${esc(pick)} <span class="small muted num">${pct(m.p[t])}</span></td>
           <td class="r num hide-m">${pct(m.p[m.outcome])}</td>
           <td class="r">${ok ? '<span class="pill ok">Correct</span>' : '<span class="pill">Missed</span>'}</td></tr>`;
@@ -858,6 +874,24 @@ function statsAccuracyCard(A) {
     <div class="card-pad" style="border-top:1px solid var(--border)"><ul class="why" style="margin:0">
       <li>"Typical miss" is the average gap between the expected and actual match total. A negative log score change means better than using league averages; green means the 95% interval is entirely below zero, and only those stats are shown in the app.</li>
       ${ex ? `<li>Yellow cards: ${ex.adopt ? `using <b>${ex.best === 'both' ? 'expected closeness and the referee' : ex.best === 'referee' ? 'the referee' : 'how close the match should be'}</b> improved predictions and is included` : `adding the referee and expected closeness was tested and ${ex.best === 'base' ? 'did not help on the tuning season' : 'did not hold up on the test seasons'}, so it isn't used`}.</li>` : ''}
+    </ul></div></div>`;
+}
+function cupCard(C) {
+  if (!C) return '';
+  const T = C.test, f3 = v => v.toFixed(3), ci = d => `${Math.abs(d.mean).toFixed(3)} lower (95% interval ${Math.abs(d.hi).toFixed(3)} to ${Math.abs(d.lo).toFixed(3)})`;
+  const yrs = s => `20${s.slice(0, 2)}–${s.slice(2)}`;
+  const up = C.by_gap.filter(g => g.gap === 1)[0], down = C.by_gap.filter(g => g.gap === -1)[0];
+  return `<div class="card" style="margin-top:12px"><div class="card-head"><h3>Cup ties</h3><span class="small muted">FA Cup and EFL Cup · 90-minute result</span></div>
+    <table><thead><tr><th>Approach</th><th class="r">Log loss</th></tr></thead><tbody>
+      <tr style="background:var(--accent-soft)"><td style="font-weight:600">Model (leagues rated together)</td><td class="r num">${f3(T.log_loss.p)}</td></tr>
+      <tr><td>Higher-division side's past record</td><td class="r num">${f3(T.log_loss.tier)}</td></tr>
+      <tr><td>Past cup averages (naive)</td><td class="r num">${f3(T.log_loss.base)}</td></tr>
+    </tbody></table>
+    <div class="card-pad"><ul class="why">
+      <li>Tested on ${T.n} ties between teams from the Premier League to League Two in ${C.test_seasons.map(yrs).join(' and ')}, each predicted from results before the match. Nothing was tuned on cup results.</li>
+      <li>Log loss was ${ci(T.vs_base)} than naive guessing, and ${ci(T.vs_tier)} than going by the gap between the two divisions, so the ratings add real information.</li>
+      ${up && down ? `<li>It slightly <b>underrates the higher-division side</b>: one division up at home, they won ${pct(up.observed[0])} of ties against ${pct(up.predicted[0])} predicted; one division up away, ${pct(down.observed[2])} against ${pct(down.predicted[2])} (all seasons).</li>` : ''}
+      <li>No bookmaker odds are shown for cups. In a one-off check on 2021–26 ties, bookmakers were more accurate than the model, by more than in league matches. Cup rotation is one likely reason.</li>
     </ul></div></div>`;
 }
 function strategyCard(S) {
@@ -968,6 +1002,7 @@ async function accuracyPage(meta) {
       <li>Bookmakers' <b>closing</b> odds remain the most accurate (${pct(mk.x12.accuracy, 1)} top pick), because they include late team news.</li>
     </ul></div>
     ${goalsCard(A)}
+    ${cupCard(A.cup_test)}
     ${statsAccuracyCard(A)}
     ${strategyCard(STRAT)}
     <div class="grid-2" style="margin-top:12px">
@@ -1004,7 +1039,7 @@ async function morePage(meta) {
 /* ---------- my teams & leagues ---------- */
 function myTeamCard(meta, f, i) {
   const r = TABLES[f.league]?.rows.find(x => x.team === f.name);
-  const nx = upcoming(meta).find(x => x.league === f.league && (x.home === f.name || x.away === f.name) && x.pr);
+  const nx = upcoming(meta).find(x => (x.league === f.league || x.cup) && (x.home === f.name || x.away === f.name) && x.pr);
   let next = '<span class="muted">No fixture in the next 10 days</span>';
   if (nx) {
     const home = nx.home === f.name, win = home ? nx.pr.H : nx.pr.A;

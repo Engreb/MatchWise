@@ -191,6 +191,14 @@ ALIASES.update({
 })
 
 
+# ESPN spellings (FA Cup and EFL Cup), only those not covered above.
+ALIASES.update({
+    "Brighton & Hove Albion": "Brighton", "Harrogate Town": "Harrogate", "Sutton United": "Sutton",
+    "Forest Green Rovers": "Forest Green", "Carlisle United": "Carlisle", "Hartlepool United": "Hartlepool",
+    "Scunthorpe United": "Scunthorpe", "Southend United": "Southend",
+})
+
+
 def canonical(name: str, known: set[str]) -> str | None:
     """football-data.co.uk name for a fixturedownload.com name, or None if unknown."""
     name = name.strip()

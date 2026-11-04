@@ -89,7 +89,9 @@ def match_page(f: dict, league_name: str) -> str:
             f"Most likely score {score}. Over 2.5 goals {_pct(o25)}, both teams to score {_pct(btts)}.")
     url = SITE + page_path(f)
     app = f"../../index.html#/match/{f['league']}/{quote(h)}/{quote(a)}"
-    basis = ("Model blended with bookmaker odds" if f["blend"] else "Model only (no bookmaker odds published yet)")
+    basis = ("Model blended with bookmaker odds" if f["blend"]
+             else "Cup tie: model only, result after 90 minutes (extra time and penalties not modelled)" if f.get("cup")
+             else "Model only (no bookmaker odds published yet)")
     ld = {"@context": "https://schema.org", "@type": "SportsEvent", "name": f"{h} vs {a}", "sport": "Football",
           "startDate": f["kickoff"], "homeTeam": {"@type": "SportsTeam", "name": h},
           "awayTeam": {"@type": "SportsTeam", "name": a}, "description": desc,
