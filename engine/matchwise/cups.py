@@ -144,6 +144,8 @@ def download(seasons: list[str], refresh: set[int] = frozenset(), log=print) -> 
                 rows = [r for r in (parse_event(cup, e) for e in d.get("events", [])) if r]
                 path.write_text(json.dumps(rows, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
                 log(f"  {name} {y}: {len(rows)} matches")
+                from .data import mark_source
+                mark_source("ESPN cups")
             except Exception as e:
                 log(f"  {name} {y}: ESPN unavailable ({type(e).__name__}); using the saved copy if there is one")
 

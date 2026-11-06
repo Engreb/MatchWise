@@ -68,3 +68,9 @@ jobs:
           path: app
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      # Last, so the site is always published: a failed data check turns the run red,
+      # and GitHub emails the repository owner. Details are on the Model accuracy page.
+      - name: Check data health
+        working-directory: engine
+        run: python -m matchwise health --strict

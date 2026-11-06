@@ -124,6 +124,20 @@ def _fetch(url: str, timeout: int = 30, attempts: int = 3) -> bytes:
     raise RuntimeError("unreachable")
 
 
+SOURCES_PATH = RAW_DIR / "sources.json"
+
+
+def mark_source(name: str, when: datetime | None = None) -> None:
+    """Remember when a data source last downloaded successfully (read by the health check)."""
+    try:
+        d = json.loads(SOURCES_PATH.read_text(encoding="utf-8")) if SOURCES_PATH.exists() else {}
+    except ValueError:
+        d = {}
+    d[name] = (when or datetime.now(timezone.utc)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    SOURCES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SOURCES_PATH.write_text(json.dumps(d, indent=1, sort_keys=True), encoding="utf-8")
+
+
 def download(force_current: bool = True, log=print) -> None:
     """Fetch season files (cached; the current season and fixtures are always refreshed)."""
     RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -134,23 +148,29 @@ def download(force_current: bool = True, log=print) -> None:
                 continue
             log(f"  downloading {season} {div}")
             path.write_bytes(_fetch(RESULTS_URL.format(season=season, div=div)))
+    mark_source("football-data results")
     log("  downloading fixtures")
     (RAW_DIR / "fixtures.csv").write_bytes(_fetch(FIXTURES_URL))
+    mark_source("football-data fixtures")
     download_understat(log)
-    for div, slug in SCHEDULE_SLUGS.items():
+    for i, (div, slug) in enumerate(SCHEDULE_SLUGS.items()):
         log(f"  downloading {slug} schedule")
         try:
             (RAW_DIR / f"schedule_{CURRENT_SEASON}_{div}.json").write_bytes(
                 _fetch(SCHEDULE_URL.format(slug=slug, yy=CURRENT_SEASON[:2]), timeout=15, attempts=1))
+            if i == len(SCHEDULE_SLUGS) - 1:
+                mark_source("fixturedownload.com schedules")
         except Exception as e:
             # Schedules change rarely, so the saved copy is fine; if the site is down, don't
             # spend minutes timing out on every league.
             log(f"    schedule site unreachable ({type(e).__name__}); using saved schedules")
             break
-    for div, slug in ESPN_SCHEDULE.items():
+    for i, (div, slug) in enumerate(ESPN_SCHEDULE.items()):
         log(f"  downloading {slug} schedule (ESPN)")
         try:
             download_espn_schedule(div, slug, log)
+            if i == len(ESPN_SCHEDULE) - 1:
+                mark_source("ESPN league schedules")
         except Exception as e:
             log(f"    ESPN unreachable ({type(e).__name__}); using saved schedules")
             break

@@ -56,3 +56,5 @@ def write(out_dir: Path, known_teams: set[str], log=print) -> None:
     news = build(known_teams, log)
     if news:
         (out_dir / "news-epl.json").write_text(json.dumps(news, separators=(",", ":")), encoding="utf-8")
+        from .data import mark_source
+        mark_source("Fantasy Premier League news")

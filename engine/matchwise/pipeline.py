@@ -496,6 +496,9 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
     if not offline:
         news.write(out_dir, epl_teams, log)
     odds_api.archive(odds_snap, now)
+    if budget.calls:
+        from .data import mark_source
+        mark_source("The Odds API")
     (out_dir / "tables.json").write_text(json.dumps(tables, separators=(",", ":")), encoding="utf-8")
     fixture_rows.sort(key=lambda r: (r["kickoff"], r["league"], r["home"]))
     history_rows.sort(key=lambda r: (r["date"], r["home"]), reverse=True)

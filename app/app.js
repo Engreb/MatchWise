@@ -248,7 +248,16 @@ function renderFreshness(meta) {
   document.getElementById('freshness').innerHTML = `
     <div class="theme-row"><span>Appearance</span><button class="iconbtn" data-theme-toggle></button></div>
     ${ageDays > 3 ? '<span class="pill warn"><span class="dot"></span>Data may be out of date</span>' : ''}
-    <div>Updated ${fmtDate(meta.generated_at)} · results to ${fmtDate(through)}<br>Data: football-data.co.uk</div>`;
+    <div>Updated ${fmtDate(meta.generated_at)} · results to ${fmtDate(through)}<br>Data: football-data.co.uk</div>
+    <div id="health-line"></div>`;
+  getJSON('health').then(H => {
+    const el = document.getElementById('health-line');
+    if (!el) return;
+    const n = H.checks.length, bad = H.status === 'error';
+    el.innerHTML = H.status === 'ok'
+      ? '<a href="#/accuracy" class="small muted" style="color:inherit">All data sources OK</a>'
+      : `<a href="#/accuracy" class="pill ${bad ? 'bad' : 'warn'}" style="margin-top:6px;text-decoration:none"><span class="dot"></span>${n} data ${n === 1 ? 'issue' : 'issues'}</a>`;
+  }).catch(() => { /* optional */ });
 }
 const staleNotice = meta => ((Date.now() - new Date(meta.generated_at)) / 864e5 > 3)
   ? `<div class="notice">Predictions were last updated ${fmtDate(meta.generated_at)}. The daily update may have failed.</div>` : '';
@@ -925,7 +934,15 @@ function strategyCard(S) {
     </ul></div></div>`;
 }
 /* ---------- since launch: the live record from predictions saved before kick-off ---------- */
-function sinceLaunchCard(H, A) {
+function healthCard(HL) {
+  if (!HL) return '';
+  const lvl = { error: ['bad', 'Problem'], warn: ['warn', 'Check'] };
+  if (HL.status === 'ok') return `<div class="card card-pad" style="margin-bottom:12px" id="status"><h3 style="margin:0">Data status</h3><p class="small muted" style="margin:4px 0 0">All sources updated recently, every league with games this week has fixtures, and live accuracy is in line with testing. Checked ${fmtDate(HL.generated_at)}.</p></div>`;
+  return `<div class="card" style="margin-bottom:12px" id="status"><div class="card-head"><h3>Data status</h3><span class="small muted">Checked ${fmtDate(HL.generated_at)} ${fmtTime(HL.generated_at)}</span></div>
+    <ul class="news-list" style="margin:0;padding:4px 14px 10px">${HL.checks.map(c => `<li><div class="line"><span>${c.league ? `<b>${esc(c.league)}</b> · ` : ''}${esc(c.message)}</span><span class="pill ${lvl[c.level][0]}">${lvl[c.level][1]}</span></div></li>`).join('')}</ul>
+    <p class="card-foot">Checked after every update. Problems also mark the GitHub run as failed, which sends an email.</p></div>`;
+}
+function sinceLaunchCard(H, A, HL) {
   const rows = (H || []).filter(r => r.source === 'saved' && r.mkt && r.p);
   if (rows.length < 20) return '';
   const shown = r => r.pb || r.p;
@@ -968,6 +985,7 @@ function sinceLaunchCard(H, A) {
         return `<div class="lgbar"><span>w/c ${fmtDate(w)} <span class="small muted">· ${rs.length}</span></span><span class="b"><i style="width:${h * 100}%"></i></span><span class="num" style="text-align:right;font-weight:600">${pct(h)}</span></div>`; }).join('')}
       <ul class="why" style="margin:10px 0 0">
         <li>Only predictions actually saved before kick-off count here; nothing is replayed or recalculated afterwards.</li>
+        ${HL && HL.drift && HL.drift.enough ? `<li><b>Last ${HL.drift.days} days:</b> ${HL.drift.gap >= 0 ? '+' : ''}${HL.drift.gap.toFixed(3)} against closing odds (testing expected ${HL.drift.expected >= 0 ? '+' : ''}${HL.drift.expected.toFixed(3)}). ${HL.drift.flag ? '<span style="color:var(--loss)">Clearly worse than testing: worth checking.</span>' : 'Within the normal range.'}</li>` : ''}
         <li>Against the bookmakers' closing odds, the app's log loss is ${Math.abs(dm) < 0.0005 ? 'level' : `${Math.abs(dm).toFixed(3)} ${dm > 0 ? 'worse' : 'better'}`} per match (rough 95% range ${(dm - se) >= 0 ? '+' : ''}${(dm - se).toFixed(3)} to ${(dm + se) >= 0 ? '+' : ''}${(dm + se).toFixed(3)}). Closing odds include late team news, so a small gap is expected.</li>
         <li>${n < 1500 ? `This is still a small sample: a top-pick rate from ${n} matches is only accurate to about ±${(moe * 100).toFixed(0)} percentage points, so single weeks swing a lot. Compare with the backtest once there are a few thousand matches.` : 'The sample is now large enough for a fair comparison with the backtest.'}</li>
       </ul></div></div>`;
@@ -977,6 +995,8 @@ async function accuracyPage(meta) {
   let STRAT = null;
   try { STRAT = await getJSON('strategies'); } catch { /* optional */ }
   try { HIST = HIST || (await getJSON('history')).matches; } catch { /* optional */ }
+  let HL = null;
+  try { HL = await getJSON('health'); } catch { /* optional */ }
   const W = 320, Hh = 240, P = 36, sx = v => P + v * (W - P - 12), sy = v => Hh - P - v * (Hh - P - 12);
   const cal = A.calibration_1x2.filter(c => c.n >= 20);
   const chart = `<svg viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Calibration chart of predicted chance against how often it happened" style="color:var(--text-3)">
@@ -992,7 +1012,8 @@ async function accuracyPage(meta) {
   const d = A.diffs;
   return `<div class="content">${topbar()}
     <div class="page-head"><div><h1>Model accuracy</h1><p class="sub">Tested on ${A.n_common.toLocaleString('en-GB')} matches from ${A.test_seasons.join(' and ')} that the model never saw during tuning, and on every prediction saved since launch.</p></div>${statusPill(meta)}</div>
-    ${sinceLaunchCard(HIST, A)}
+    ${healthCard(HL)}
+    ${sinceLaunchCard(HIST, A, HL)}
     <div class="card stats">
       <div class="stat"><div class="lbl">Odds-adjusted</div><div class="val num">${pct((bl || dc).x12.accuracy, 1)}</div><div class="meta">top pick right</div></div>
       <div class="stat"><div class="lbl">Model only</div><div class="val num">${pct(dc.x12.accuracy, 1)}</div><div class="meta">top pick right</div></div>

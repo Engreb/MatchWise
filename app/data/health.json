@@ -1,0 +1,21 @@
+{
+ "generated_at": "2026-11-06T11:00:37Z",
+ "status": "warn",
+ "checks": [
+  {
+   "level": "warn",
+   "area": "sources",
+   "message": "No record of when the data sources last updated."
+  }
+ ],
+ "drift": {
+  "days": 28,
+  "n": 494,
+  "gap": 0.009258300395667754,
+  "lo": 0.0029430760036207983,
+  "hi": 0.015573524787714711,
+  "expected": 0.004096151741283083,
+  "flag": false,
+  "enough": true
+ }
+}

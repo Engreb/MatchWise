@@ -1,17 +1,18 @@
-"""Command line: python -m matchwise [download|backtest|update|all|strategies|injuries|totals|stats|cups]"""
+"""Command line: python -m matchwise [download|backtest|update|all|strategies|injuries|totals|stats|cups|health]"""
 import argparse
 from pathlib import Path
 
-from . import backtest, cups, data, injuries, pipeline, strategies
+from . import backtest, cups, data, health, injuries, pipeline, strategies
 
 APP_DATA = Path(__file__).resolve().parents[2] / "app" / "data"
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(prog="matchwise")
-    ap.add_argument("command", choices=["download", "backtest", "update", "all", "strategies", "injuries", "totals", "stats", "cups"],
+    ap.add_argument("command", choices=["download", "backtest", "update", "all", "strategies", "injuries", "totals", "stats", "cups", "health"],
                     help="download: fetch data · backtest: tune + validate (slow) · update: refresh predictions · all: everything")
     ap.add_argument("--offline", action="store_true", help="skip downloading; use cached files")
+    ap.add_argument("--strict", action="store_true", help="health: exit with an error when a check fails")
     args = ap.parse_args()
 
     if args.command in ("download", "update", "all") and not args.offline:
@@ -34,6 +35,11 @@ def main() -> None:
     if args.command in ("update", "all"):
         print("Fitting current models…")
         pipeline.run(APP_DATA, offline=args.offline)
+        health.run(APP_DATA)  # data status shown in the app
+    if args.command == "health":
+        h = health.run(APP_DATA)
+        if args.strict and h["status"] == "error":
+            raise SystemExit("Data health check failed (see above).")
 
 
 if __name__ == "__main__":
