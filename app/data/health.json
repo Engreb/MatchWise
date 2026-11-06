@@ -1,19 +1,13 @@
 {
- "generated_at": "2026-11-06T11:00:37Z",
- "status": "warn",
- "checks": [
-  {
-   "level": "warn",
-   "area": "sources",
-   "message": "No record of when the data sources last updated."
-  }
- ],
+ "generated_at": "2026-11-06T11:12:29Z",
+ "status": "ok",
+ "checks": [],
  "drift": {
   "days": 28,
-  "n": 494,
-  "gap": 0.009258300395667754,
-  "lo": 0.0029430760036207983,
-  "hi": 0.015573524787714711,
+  "n": 493,
+  "gap": 0.008606404755631797,
+  "lo": 0.0020975926784866337,
+  "hi": 0.01511521683277696,
   "expected": 0.004096151741283083,
   "flag": false,
   "enough": true
