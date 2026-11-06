@@ -1,0 +1,5 @@
+# Text files use LF in the repository and in every checkout, so Windows and the Linux
+# GitHub runner agree and git stops warning about line-ending conversion.
+* text=auto eol=lf
+
+*.png binary
