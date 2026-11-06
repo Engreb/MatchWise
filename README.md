@@ -57,7 +57,9 @@ Home/draw/away probabilities are well calibrated (average gap 0.7%). Over/under 
 
 When bookmaker odds are published for a fixture (usually a few days before), the app shows an **odds-adjusted** prediction. It combines the model with the pre-match odds (weights tuned on 2023–24: 100% odds for home/draw/away and for over/under 2.5), then refits one coherent score distribution so every market agrees. "Model only" stays available on the match page.
 
-Thirteen leagues have full-season schedules from fixturedownload.com: the top five, the Championship, League One, League Two, Scottish Premiership, Eredivisie, Primeira Liga, Ligue 2 and Süper Lig. The others (2. Bundesliga, Serie B, Segunda, Belgium, Greece, Scottish Championship) only list fixtures once football-data.co.uk publishes them, usually a few days ahead, and their projected tables assume every team still plays every remaining opponent. In Belgium and Greece the projection covers the regular season only.
+Thirteen leagues have full-season schedules from fixturedownload.com: the top five, the Championship, League One, League Two, Scottish Premiership, Eredivisie, Primeira Liga, Ligue 2 and Süper Lig. The other six (2. Bundesliga, Serie B, Segunda, Belgium, Greece, Scottish Championship) come from ESPN's free scoreboard, with team names matched to football-data's by comparing results. In Belgium and Greece the projected table covers the regular season only.
+
+The Fixtures page can be filtered by country (cups count as England); the choice is remembered on the device.
 
 Team names in the schedule are mapped explicitly in `engine/matchwise/teams.py`. An unknown name is reported during the update and that fixture shows as "unable to assess" until it's added.
 
@@ -81,7 +83,7 @@ All five beat league averages and are well calibrated (gaps 0.2–0.8%), so all 
 
 Each update simulates the rest of every league season 10,000 times from the model's predictions (allowing team strength to drift over the season) to give projected points and title, top-4/promotion and relegation chances, plus each team's chance of finishing in every position. Code: `engine/matchwise/projections.py`.
 
-In the 13 leagues with a full schedule source, the table also includes scores fixturedownload.com already has but football-data.co.uk hasn't published yet, marked "Provisional" on the Tables page. Ratings and predictions only use football-data results, because they also need shots and xG.
+In every league, the table also includes scores the schedule sources (fixturedownload.com or ESPN) already have but football-data.co.uk hasn't published yet, marked "Provisional" on the Tables page. Ratings and predictions only use football-data results, because they also need shots and xG.
 
 ## Team news
 

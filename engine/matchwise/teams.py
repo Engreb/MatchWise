@@ -181,6 +181,10 @@ ALIASES.update({
 })
 
 
+# ESPN spellings for the leagues scheduled from ESPN that its results-matching can't pair up.
+ALIASES.update({"US Avellino": "Avellino", "Cádiz": "Cadiz"})
+
+
 # Understat spellings (xG history for the top five leagues).
 ALIASES.update({
     "Real Valladolid": "Valladolid", "SD Huesca": "Huesca", "Parma Calcio 1913": "Parma",

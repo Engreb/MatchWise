@@ -51,6 +51,11 @@ SCHEDULE_URL = "https://fixturedownload.com/feed/json/{slug}-20{yy}"
 SCHEDULE_SLUGS = {"E0": "epl", "SP1": "la-liga", "I1": "serie-a", "D1": "bundesliga", "F1": "ligue-1",
                   "E1": "championship", "SC0": "scottish-premiership", "N1": "eredivisie", "P1": "primeira-liga",
                   "E2": "efl-league-one", "E3": "efl-league-two", "F2": "ligue-2", "T1": "super-lig"}
+# Leagues fixturedownload.com doesn't cover: full-season schedules from ESPN's free scoreboard,
+# written in the same format. ESPN team names are matched to football-data names by results.
+ESPN_SCHEDULE = {"D2": "ger.2", "I2": "ita.2", "SP2": "esp.2", "B1": "bel.1", "G1": "gre.1", "SC1": "sco.2"}
+ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/scoreboard?dates={year}&limit=1000"
+ESPN_SKIP = {"STATUS_POSTPONED", "STATUS_CANCELED", "STATUS_ABANDONED"}
 
 
 @dataclass
@@ -142,6 +147,74 @@ def download(force_current: bool = True, log=print) -> None:
             # spend minutes timing out on every league.
             log(f"    schedule site unreachable ({type(e).__name__}); using saved schedules")
             break
+    for div, slug in ESPN_SCHEDULE.items():
+        log(f"  downloading {slug} schedule (ESPN)")
+        try:
+            download_espn_schedule(div, slug, log)
+        except Exception as e:
+            log(f"    ESPN unreachable ({type(e).__name__}); using saved schedules")
+            break
+
+
+def download_espn_schedule(div: str, slug: str, log=print) -> int:
+    """This season's fixtures and scores for one league from ESPN, saved as a fixturedownload-
+    style schedule. Team names are mapped by matching ESPN's finished games with football-data
+    results (same score within a day); a name that can't be matched is kept as it is, and the
+    update then reports it as an unknown team."""
+    y0 = 2000 + int(CURRENT_SEASON[:2])
+    events = []
+    for year in (y0, y0 + 1):
+        d = json.loads(_fetch(ESPN_URL.format(slug=slug, year=year), timeout=20, attempts=2))
+        events += d.get("events", [])
+    rows, seen = [], set()
+    for e in events:
+        ko = datetime.fromisoformat(e["date"].replace("Z", "+00:00")).astimezone(timezone.utc)
+        if not (date(y0, 7, 1) <= ko.date() <= date(y0 + 1, 6, 30)) or e["id"] in seen:
+            continue
+        seen.add(e["id"])
+        c = e["competitions"][0]
+        side = {t["homeAway"]: t for t in c["competitors"]}
+        st = e["status"]["type"]
+        if "home" not in side or "away" not in side or st["name"] in ESPN_SKIP:
+            continue
+        done = st.get("completed") and st.get("state") == "post"
+        rows.append({"home": side["home"]["team"]["displayName"], "away": side["away"]["team"]["displayName"], "ko": ko,
+                     "hg": int(side["home"]["score"]) if done else None, "ag": int(side["away"]["score"]) if done else None})
+    names = espn_team_map(div, rows)
+    unmatched = sorted({r[k] for r in rows for k in ("home", "away") if r[k] not in names})
+    if unmatched:
+        log(f"    ! ESPN names not matched to football-data yet: {', '.join(unmatched)}")
+    out = [{"HomeTeam": names.get(r["home"], r["home"]), "AwayTeam": names.get(r["away"], r["away"]),
+            "DateUtc": r["ko"].strftime("%Y-%m-%d %H:%M:%SZ"), "RoundNumber": None,
+            "HomeTeamScore": r["hg"], "AwayTeamScore": r["ag"]} for r in sorted(rows, key=lambda r: r["ko"])]
+    (RAW_DIR / f"schedule_{CURRENT_SEASON}_{div}.json").write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    return len(out)
+
+
+def espn_team_map(div: str, rows: list[dict]) -> dict[str, str]:
+    """ESPN name -> football-data name, by voting over finished games that match a football-data
+    result for the same pairing slot (same date within a day, same score)."""
+    by_key: dict = {}
+    for m in load_results(div):
+        if m.season == CURRENT_SEASON and m.played:
+            by_key.setdefault((m.date, m.hg, m.ag), []).append(m)
+    votes: dict[str, dict[str, int]] = {}
+    for r in rows:
+        if r["hg"] is None:
+            continue
+        d = r["ko"].astimezone(UK).date()
+        for dd in (d, d - timedelta(days=1), d + timedelta(days=1)):
+            for m in by_key.get((dd, r["hg"], r["ag"]), []):
+                for espn, fd in ((r["home"], m.home), (r["away"], m.away)):
+                    v = votes.setdefault(espn, {})
+                    v[fd] = v.get(fd, 0) + 1
+    out = {}
+    for espn, v in votes.items():
+        best = max(v, key=v.get)
+        # Clear winner only: a team's true name wins nearly all of its matched games.
+        if v[best] >= 3 and v[best] >= 0.6 * sum(v.values()):
+            out[espn] = best
+    return out
 
 
 def _decode(raw: bytes) -> str:
@@ -196,12 +269,17 @@ def _kickoff(d: date, t: str) -> datetime | None:
     return local.astimezone(timezone.utc)
 
 
+# football-data.co.uk occasionally spells a team differently in a few rows; keep one name.
+FD_SPELLINGS = {"KV Mechelen": "Mechelen"}
+
+
 def _row_to_match(row: dict, div: str, season: str, with_result: bool) -> Match | None:
     if not row.get("HomeTeam") or not row.get("Date"):
         return None
     d = _parse_date(row["Date"])
     m = Match(div=div, season=season, date=d, kickoff_utc=_kickoff(d, row.get("Time", "")),
-              home=row["HomeTeam"].strip(), away=row["AwayTeam"].strip())
+              home=FD_SPELLINGS.get(row["HomeTeam"].strip(), row["HomeTeam"].strip()),
+              away=FD_SPELLINGS.get(row["AwayTeam"].strip(), row["AwayTeam"].strip()))
     if with_result:
         try:
             m.hg, m.ag = int(row["FTHG"]), int(row["FTAG"])

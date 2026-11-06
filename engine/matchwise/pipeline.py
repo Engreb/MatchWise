@@ -458,8 +458,12 @@ def run(out_dir: Path, log=print, offline: bool = False) -> dict:
             h, a = canonical(s_["home"], known), canonical(s_["away"], known)
             if h and a:
                 scheduled[(h, a)] += 1
-        if not scheduled and div in projections.ROUND_ROBIN:
-            scheduled = Counter({(h, a): projections.ROUND_ROBIN[div] for h in teams for a in teams if h != a})
+        if div in projections.ROUND_ROBIN:
+            # Projection covers the round-robin (regular season) only: play-off games in the
+            # schedule are left out, and a missing schedule means every pairing still to come.
+            k = projections.ROUND_ROBIN[div]
+            scheduled = Counter({(h, a): min(scheduled[(h, a)], k) if scheduled else k
+                                 for h in teams for a in teams if h != a})
         remaining = [pair for pair, n in scheduled.items() for _ in range(max(0, n - played[pair]))]
         proj = projections.project(div, table_res, remaining, teams, model.rates)
         form = {t: [] for t in teams}

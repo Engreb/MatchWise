@@ -29,6 +29,7 @@ function toggleFavLeague(lg) {
 }
 state.fxView = store.get('mw-fxview') === 'cards' ? 'cards' : 'compact';
 state.fxMine = store.get('mw-fxmine') === '1';
+state.fxCountry = store.get('mw-fxcountry') || 'all';
 
 /* ---------- theme ---------- */
 const prefersDark = () => !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -343,19 +344,29 @@ async function weekendPage(meta) {
 }
 
 /* ---------- fixtures ---------- */
+// Country filter on the Fixtures page (cups count as England).
+const COUNTRIES = [['ENG', 'England'], ['ESP', 'Spain'], ['ITA', 'Italy'], ['GER', 'Germany'], ['FRA', 'France'], ['SCO', 'Scotland'],
+  ['NED', 'Netherlands'], ['POR', 'Portugal'], ['TUR', 'Turkey'], ['BEL', 'Belgium'], ['GRE', 'Greece']];
 async function fixturesPage(meta) {
   const hasFavs = favs.teams.length || favs.leagues.length;
   const mineOnly = hasFavs && state.fxMine;
   const isMine = f => isFavLeague(f.league) || favIn(f, f.home) || favIn(f, f.away);
-  const fx = upcoming(meta).filter(f => !mineOnly || isMine(f));
+  const base = upcoming(meta).filter(f => !mineOnly || isMine(f));
+  const inCountry = (f, c) => c === 'all' || CC[f.league] === c;
+  if (!base.some(f => inCountry(f, state.fxCountry))) state.fxCountry = 'all';
+  const fx = base.filter(f => inCountry(f, state.fxCountry));
   const days = [...new Set(fx.map(f => ukDate(f.kickoff)))].sort();
   if (!state.fxDay || !days.includes(state.fxDay)) state.fxDay = days[0] || null;
   const head = `${topbar()}<div class="page-head"><div><h1>Fixtures</h1><p class="sub">Next 10 days · UK time</p></div>
     <div class="seg" role="group" aria-label="Layout"><button data-fxview="cards" aria-pressed="${state.fxView === 'cards'}">Cards</button><button data-fxview="compact" aria-pressed="${state.fxView === 'compact'}">Compact</button></div></div>`;
   if (!fx.length && mineOnly) return `<div class="content">${head}<button class="lchip" data-fxmine aria-pressed="true" style="margin:10px 0 12px;padding-left:10px">${I.star} My matches</button><div class="card empty"><h3>No matches for your teams or leagues</h3><p>None of them play in the next 10 days.</p></div></div>`;
   if (!fx.length) return `<div class="content">${head}${staleNotice(meta)}<div class="card empty"><h3>No upcoming fixtures found</h3><p>The schedule couldn't be loaded, or every match has already kicked off.</p><a class="btn primary" href="#/predict">Predict a match</a></div></div>`;
-  const mineBtn = hasFavs ? `<button class="lchip" data-fxmine aria-pressed="${!!mineOnly}" style="margin:10px 0 0;padding-left:10px">${I.star} My matches${mineOnly ? '' : ` · ${upcoming(meta).filter(isMine).length}`}</button>` : '';
-  const strip = `${mineBtn}<div class="days hscroll" role="group" aria-label="Choose a day">${days.map(d => {
+  const mineBtn = hasFavs ? `<button class="lchip" data-fxmine aria-pressed="${!!mineOnly}" style="padding-left:10px">${I.star} My matches${mineOnly ? '' : ` · ${upcoming(meta).filter(isMine).length}`}</button>` : '';
+  const counts = {};
+  base.forEach(f => { counts[CC[f.league]] = (counts[CC[f.league]] || 0) + 1; });
+  const chip = (c, label, n) => `<button class="lchip" data-fxctry="${c}" aria-pressed="${state.fxCountry === c}" style="padding-left:12px">${label} <span class="muted num">${n}</span></button>`;
+  const filters = `<div class="chips" role="group" aria-label="Filter fixtures" style="margin-top:10px">${mineBtn}${chip('all', 'All', base.length)}${COUNTRIES.filter(([c]) => counts[c]).map(([c, nm]) => chip(c, nm, counts[c])).join('')}</div>`;
+  const strip = `${filters}<div class="days hscroll" role="group" aria-label="Choose a day">${days.map(d => {
     const x = new Date(d + 'T12:00:00Z');
     return `<button class="day-pill" data-day="${d}" aria-pressed="${d === state.fxDay}" style="min-width:54px"><small>${x.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}</small><b>${x.getUTCDate()}</b><i></i></button>`;
   }).join('')}</div>`;
@@ -370,7 +381,7 @@ async function fixturesPage(meta) {
     return `<div class="card" style="margin-top:10px;overflow:hidden">${headBtn}</div>${open ? `<div class="fx-grid" style="margin-top:10px">${groups[k].map(f => fixtureCard(f, false)).join('')}</div>` : ''}`;
   }).join('');
   return `<div class="content">${head}${staleNotice(meta)}${strip}
-    <p class="small muted" style="margin:10px 2px 0">${fmtDay(state.fxDay)} · ${dayFx.length} match${dayFx.length === 1 ? '' : 'es'}${dayFx.some(f => f.blend) ? ' · bookmaker odds included where published' : ''}</p>${body}</div>`;
+    <p class="small muted" style="margin:10px 2px 0">${fmtDay(state.fxDay)} · ${dayFx.length} match${dayFx.length === 1 ? '' : 'es'}${state.fxCountry !== 'all' ? ` in ${esc((COUNTRIES.find(([c]) => c === state.fxCountry) || [, ''])[1])}` : ''}${dayFx.some(f => f.blend) ? ' · bookmaker odds included where published' : ''}</p>${body}</div>`;
 }
 
 /* ---------- tables ---------- */
@@ -1197,6 +1208,7 @@ function bind() {
   const rerender = () => { const y = scrollY; route().then(() => scrollTo(0, y)); };
   document.querySelectorAll('[data-setlg]').forEach(b => b.onclick = () => { state.setLeague = b.dataset.setlg; rerender(); });
   document.querySelectorAll('[data-fxmine]').forEach(b => b.onclick = () => { state.fxMine = !state.fxMine; store.set('mw-fxmine', state.fxMine ? '1' : null); rerender(); });
+  document.querySelectorAll('[data-fxctry]').forEach(b => b.onclick = () => { state.fxCountry = b.dataset.fxctry; store.set('mw-fxcountry', state.fxCountry === 'all' ? null : state.fxCountry); rerender(); });
   document.querySelectorAll('[data-fav-move]').forEach(b => b.onclick = () => {
     const i = +b.dataset.favMove;
     if (i > 0) { [favs.teams[i - 1], favs.teams[i]] = [favs.teams[i], favs.teams[i - 1]]; saveFavs(); }
