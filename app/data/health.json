@@ -1,13 +1,20 @@
 {
- "generated_at": "2026-11-08T21:22:17Z",
- "status": "ok",
- "checks": [],
+ "generated_at": "2026-11-09T13:58:13Z",
+ "status": "warn",
+ "checks": [
+  {
+   "level": "warn",
+   "area": "teams",
+   "league": "Segunda Divisi\u00f3n",
+   "message": "Fixtures that can't be predicted (team name not recognised?): Sociedad B, Sporting Gij\u00f3n"
+  }
+ ],
  "drift": {
   "days": 28,
-  "n": 598,
-  "gap": 0.006037558758414273,
-  "lo": 0.000569911198531634,
-  "hi": 0.011505206318296914,
+  "n": 640,
+  "gap": 0.007362087456227953,
+  "lo": 0.0018648283617889675,
+  "hi": 0.012859346550666938,
   "expected": 0.004096151741283083,
   "flag": false,
   "enough": true
