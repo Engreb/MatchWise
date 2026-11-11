@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-10T13:31:39Z",
+ "generated_at": "2026-11-11T12:46:39Z",
  "status": "warn",
  "checks": [
   {
@@ -7,6 +7,11 @@
    "area": "teams",
    "league": "Segunda Divisi\u00f3n",
    "message": "Fixtures that can't be predicted (team name not recognised?): Sociedad B, Sporting Gij\u00f3n"
+  },
+  {
+   "level": "warn",
+   "area": "sources",
+   "message": "The Odds API last downloaded 2.9 days ago."
   }
  ],
  "drift": {
