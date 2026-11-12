@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-11T12:46:39Z",
+ "generated_at": "2026-11-12T13:50:05Z",
  "status": "warn",
  "checks": [
   {
@@ -11,7 +11,7 @@
   {
    "level": "warn",
    "area": "sources",
-   "message": "The Odds API last downloaded 2.9 days ago."
+   "message": "The Odds API last downloaded 4.0 days ago."
   }
  ],
  "drift": {
