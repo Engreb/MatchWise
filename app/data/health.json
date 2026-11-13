@@ -1,17 +1,17 @@
 {
- "generated_at": "2026-11-12T13:50:05Z",
+ "generated_at": "2026-11-13T13:11:23Z",
  "status": "warn",
  "checks": [
   {
    "level": "warn",
    "area": "teams",
    "league": "Segunda Divisi\u00f3n",
-   "message": "Fixtures that can't be predicted (team name not recognised?): Sociedad B, Sporting Gij\u00f3n"
+   "message": "Fixtures that can't be predicted (team name not recognised?): Las Palmas, Sociedad B, Sporting Gij\u00f3n"
   },
   {
    "level": "warn",
    "area": "sources",
-   "message": "The Odds API last downloaded 4.0 days ago."
+   "message": "The Odds API last downloaded 4.9 days ago."
   }
  ],
  "drift": {
