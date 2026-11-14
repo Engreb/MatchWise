@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-13T18:05:56Z",
+ "generated_at": "2026-11-14T12:15:37Z",
  "status": "warn",
  "checks": [
   {
@@ -11,15 +11,15 @@
   {
    "level": "warn",
    "area": "sources",
-   "message": "The Odds API last downloaded 5.1 days ago."
+   "message": "The Odds API last downloaded 5.9 days ago."
   }
  ],
  "drift": {
   "days": 28,
-  "n": 642,
-  "gap": 0.0075590384485704105,
-  "lo": 0.0020705560635990144,
-  "hi": 0.013047520833541807,
+  "n": 637,
+  "gap": 0.007558854835053504,
+  "lo": 0.0020345171013442156,
+  "hi": 0.013083192568762793,
   "expected": 0.004096151741283083,
   "flag": false,
   "enough": true
