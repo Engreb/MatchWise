@@ -1,11 +1,11 @@
 {
- "generated_at": "2026-11-17T01:02:42Z",
+ "generated_at": "2026-11-17T14:31:03Z",
  "status": "warn",
  "checks": [
   {
    "level": "warn",
    "area": "sources",
-   "message": "The Odds API last downloaded 8.4 days ago."
+   "message": "The Odds API last downloaded 9.0 days ago."
   }
  ],
  "drift": {
